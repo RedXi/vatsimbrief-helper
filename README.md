@@ -6,25 +6,32 @@ The plugin provides information from the **Simbrief flightplan** and relevant **
 
 It solves two major issues that VR pilots usually face:
 
-* A printed flightplan cannot be taken into VR. And even if the resolution of the VR device allows for, scrolling through tiny Simbrief flightplan fonts is usually very exhausting.
-* VATSIM frequencies cannot be obtained from official charts (e.g. Navigraph). Also, taking notes in VR takes much more time than in the real world.
+* A printed flightplan can not be taken into VR. And even if the resolution of the VR device allows for, scrolling through tiny Simbrief flightplan fonts is usually very exhausting.
+* VATSIM frequencies can not be obtained from official charts (e.g. Navigraph). Also, taking notes in VR takes a lot of time, sopmetimes putting the pilot in distress.
 
 ![All windows](screenshots/overview.png "All windows")
+
+## Installation and Usage
+
+Installation:
+
+* Install FlyWithLua plugin: https://forums.x-plane.org/index.php?/files/file/38445-flywithlua-ng-next-generation-edition-for-x-plane-11-win-lin-mac/
+* Download the [latest release of this plugin](https://github.com/RedXi/vatsimbrief-helper/releases/latest)
+* Extract the zip-File folders into `<X-Plane-Directory>/Resources/plugins/FlyWithLua` and, if asked, overwrite existing files
+* During first launch, a configuration window will show automatically. Enter your *VATSIM-Username* and press *Set*.
+
+Usage:
+
+* Windows can be toggled inside the plugins menu: `Plugins / FlyWithLua / FlyWithLua Macros` and select one of the following windows:
+  * `Vatsimbrief Helper Flightplan`: Opens/closes a window showing a relevant excerpt of the flightplan.
+  * `Vatsimbrief Helper ATC`: Opens/closes a window showing relevant ATC frequencies.
+  * `Vatsimbrief Helper Control`: Opens/closes a window for setting the Simbrief username or reloading the flightplan or ATC data manually.
+* If an attribute has two values separated by '/', the left value is the **destination** and the right one refers to the **alternate**
+* Windows will refresh automatically every minute.
+
+**Happy Flying!**
 
 ## Dependencies
 
 Required runtime Lua dependencies: copas, luasocket, binaryheap.lua, coxpcall, timerwheel.lua, LIP, xml2lua
-
-They are also part of the release artifact.
-
-## Installation and Usage
-
-* Install FlyWithLua plugin: https://forums.x-plane.org/index.php?/files/file/38445-flywithlua-ng-next-generation-edition-for-x-plane-11-win-lin-mac/
-* Extract the zip-File into `<X-Plane-Directory>/Resources/plugins/FlyWithLua`
-* During first launch, enter your *VATSIM-Username* and press *Set*
-* Windows can be toggled inside the plugins menu: `Plugins / FlyWithLua / FlyWithLua Macros` and select one of the following windows:
-  * `Vatsimbrief Helper Flightplan`: Opens/closes a window showing a relevant excerpt of the flightplan. Refreshes automatically every minute.
-  * `Vatsimbrief Helper ATC`: Opens/closes a window showing relevant ATC frequencies. Refreshes automatically every minute.
-  * `Vatsimbrief Helper Control`: Opens/closes a window for setting the Simbrief username or reloading the flightplan or ATC data manually.
-
-**Happy Flying!**
+They are bundled with the release artifact.
