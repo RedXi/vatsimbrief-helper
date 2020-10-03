@@ -11,16 +11,14 @@ It solves two major issues that VR pilots usually face:
 
 ![All windows](screenshots/overview.png "All windows")
 
-## Installation and Usage
-
-Installation:
+## Installation
 
 * Install FlyWithLua plugin: https://forums.x-plane.org/index.php?/files/file/38445-flywithlua-ng-next-generation-edition-for-x-plane-11-win-lin-mac/
 * Download the [latest release of this plugin](https://github.com/RedXi/vatsimbrief-helper/releases/latest)
 * Extract the zip-File folders into `<X-Plane-Directory>/Resources/plugins/FlyWithLua` and, if asked, overwrite existing files
 * During first launch, a configuration window will show automatically. Enter your *VATSIM-Username* and press *Set*.
 
-Usage:
+## Usage
 
 * Windows can be toggled inside the plugins menu: `Plugins / FlyWithLua / FlyWithLua Macros` and select one of the following windows:
   * `Vatsimbrief Helper Flightplan`: Opens/closes a window showing a relevant excerpt of the flightplan.
@@ -34,4 +32,5 @@ Usage:
 ## Dependencies
 
 Required runtime Lua dependencies: copas, luasocket, binaryheap.lua, coxpcall, timerwheel.lua, LIP, xml2lua
+
 They are bundled with the release artifact.
