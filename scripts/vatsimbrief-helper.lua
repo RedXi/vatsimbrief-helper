@@ -496,7 +496,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
       else
         FlightplanWindowAltitudeAndTemp = ("ALT=%d TEMP=%d°C"):format(FlightplanAltitude, FlightplanTocTemp)
       end
-      FlightplanWindowAltitudeAndTemp = createFlightplanTableEntry("CRZ", FlightplanWindowAltitudeAndTemp)
+      FlightplanWindowAltitudeAndTemp = createFlightplanTableEntry("Cruise", FlightplanWindowAltitudeAndTemp)
       
       FlightplanWindowFuel = ("BLOCK=%d%s RESERVE=%d%s T/O=%d%s"):format(
         FlightplanBlockFuel, FlightplanUnit,
