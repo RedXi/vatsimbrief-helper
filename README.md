@@ -4,10 +4,11 @@
 
 The plugin provides information from the **Simbrief flightplan** and relevant **VATSIM frequencies** for ATC communications in X-Plane 2D and VR flight setups.
 
-It solves two major issues that VR pilots usually face:
+It solves major issues that VR pilots usually face:
 
 * A printed flightplan can not be taken into VR. And even if the resolution of the VR device allows for, scrolling through tiny Simbrief flightplan fonts is usually very exhausting.
-* VATSIM frequencies can not be obtained from official charts (e.g. Navigraph). Also, taking notes in VR takes a lot of time, sopmetimes putting the pilot in distress.
+* VATSIM frequencies can not be obtained from official charts (e.g. Navigraph). Also, taking notes in VR takes a lot of time, which easily distresses pilots.
+* Air traffic control stations are highly volatile. When using the plugin it can be avoided to approach an unmonitored airport. Instead, pilots can divert to their alternate where there are air traffic controllers on service.
 
 ![All windows](screenshots/overview.png "All windows")
 
@@ -24,7 +25,7 @@ It solves two major issues that VR pilots usually face:
   * `Vatsimbrief Helper Flightplan`: Opens/closes a window showing a relevant excerpt of the flightplan.
   * `Vatsimbrief Helper ATC`: Opens/closes a window showing relevant ATC frequencies.
   * `Vatsimbrief Helper Control`: Opens/closes a window for setting the Simbrief username or reloading the flightplan or ATC data manually.
-* If an attribute has two values separated by '/', the left value is the **destination** and the right one refers to the **alternate**
+* If an attribute has two values separated by '/', the left value refers to the **destination** and the right one to the **alternate**
 * Windows will refresh automatically every minute.
 
 **Happy Flying!**
