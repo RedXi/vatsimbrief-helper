@@ -199,7 +199,7 @@ local FlightplanSchedOn = 0
 local FlightplanSchedIn = 0
 local FlightplanSchedBlock = 0
 
-local FlightplanInitialAltitude = 0
+local FlightplanAltitude = 0
 local FlightplanAltAltitude = 0
 local FlightplanTocTemp = 0
 
@@ -492,9 +492,9 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
       FlightplanWindowSchedule = createFlightplanTableEntry("Schedule", FlightplanWindowSchedule)
       
       if stringIsNotEmpty(FlightplanAltIcao) then
-        FlightplanWindowAltitudeAndTemp = ("ALT=%d/%d TEMP=%d°C"):format(FlightplanInitialAltitude, FlightplanAltAltitude, FlightplanTocTemp)
+        FlightplanWindowAltitudeAndTemp = ("ALT=%d/%d TEMP=%d°C"):format(FlightplanAltitude, FlightplanAltAltitude, FlightplanTocTemp)
       else
-        FlightplanWindowAltitudeAndTemp = ("ALT=%d TEMP=%d°C"):format(FlightplanInitialAltitude, FlightplanTocTemp)
+        FlightplanWindowAltitudeAndTemp = ("ALT=%d TEMP=%d°C"):format(FlightplanAltitude, FlightplanTocTemp)
       end
       FlightplanWindowAltitudeAndTemp = createFlightplanTableEntry("CRZ", FlightplanWindowAltitudeAndTemp)
       
