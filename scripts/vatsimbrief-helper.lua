@@ -660,6 +660,11 @@ local function renderAtcString(info)
     shortId = info.id
   end
   
+  -- Remove leading '_', e.g. _TWR
+  while shortId:find('_') == 1 do
+    shortId = shortId:sub(2)
+  end
+  
   return shortId .. '=' .. info.frequency
 end
 
