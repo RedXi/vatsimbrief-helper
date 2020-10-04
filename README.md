@@ -21,11 +21,12 @@ It solves major issues that VR pilots usually face:
 
 ## Usage
 
-* Windows can be toggled inside the plugins menu: `Plugins / FlyWithLua / FlyWithLua Macros` and select one of the following windows:
+* Create your flightplan on [simbrief](https://www.simbrief.com/) as usual, at some time before takeoff.
+* Windows can be toggled inside the plugins menu `Plugins / FlyWithLua / FlyWithLua Macros`:
   * `Vatsimbrief Helper Flightplan`: Opens/closes a window showing a relevant excerpt of the flightplan.
   * `Vatsimbrief Helper ATC`: Opens/closes a window showing relevant ATC frequencies.
   * `Vatsimbrief Helper Control`: Opens/closes a window for setting the Simbrief username or reloading the flightplan or ATC data manually.
-* If an attribute has two values separated by '/', the left value refers to the **destination** and the right one to the **alternate**
+* If an attribute has two values separated by `/`, the left value refers to the **destination** and the right one to the **alternate**
 * Windows will refresh automatically every minute.
 
 **Happy Flying!**
