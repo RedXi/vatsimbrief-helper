@@ -47,6 +47,10 @@ local function numberIsNotNilOrZero(n)
   return not numberIsNilOrZero(n)
 end
 
+function trim(s)
+   return s:gsub("^%s*(.-)%s*$", "%1")
+end
+
 -- Make sure to consider licenses.
 local licensesOfDependencies = {
   -- Async HTTP: copas + dependencies.
@@ -601,7 +605,7 @@ function buildVatsimbriefHelperControlWindowCanvas()
   imgui.SameLine()
   if imgui.Button("Set") then
     if VatsimbriefConfiguration.simbrief == nil then VatsimbriefConfiguration.simbrief = {} end
-    VatsimbriefConfiguration.simbrief.username = inputUserName
+    VatsimbriefConfiguration.simbrief.username = trim(inputUserName)
     saveConfiguration()
     clearFlightplan()
     refreshFlightplanNow()
