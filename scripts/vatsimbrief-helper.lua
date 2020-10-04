@@ -51,6 +51,12 @@ function trim(s)
    return s:gsub("^%s*(.-)%s*$", "%1")
 end
 
+-- Color schema
+local colorA320Blue = 0xFFFFDDAA
+local colorNormal = 0xFFFFFFFF
+local colorWarn = 0xFF55FFFF
+local colorErr = 0xFF5555FF
+
 -- Make sure to consider licenses.
 local licensesOfDependencies = {
   -- Async HTTP: copas + dependencies.
@@ -140,7 +146,12 @@ do_often("tickConcurrentTasks()")
 
 local http = require("copas.http")
 
-local function performDefaultHttpGetRequest(url, callback)
+local HttpDownloadErrors = {
+  NETWORK = 1,
+  NON_2XX_STATUS = 2
+}
+
+local function performDefaultHttpGetRequest(url, resultCallback, errorCallback)
   local t0 = os.clock()
   
   local content, code, headers, status = http.request(url)
@@ -148,14 +159,16 @@ local function performDefaultHttpGetRequest(url, callback)
   if type(content) ~= "string" or type(code) ~= "number" or
       type(headers) ~= "table" or type(status) ~= "string" then
     print(("Request URL: %s, FAILURE"):format(url))
-    return nil -- Err
-  end
+    errorCallback({ errorCode = HttpDownloadErrors.NETWORK })
+  else
+    print(("Request URL: %s, duration: %.2fs, response status: %s, response length: %d bytes")
+      :format(url, os.clock() - t0, status, #content))
   
-  print(("Request URL: %s, duration: %.2fs, response status: %s, response length: %d bytes")
-    :format(url, os.clock() - t0, status, #content))
-  
-  if code >= 200 and code < 300 then
-    table.insert(SyncTasksAfterAsyncTasks, { callback = callback, params = { httpResponse = content } })
+    if code >= 200 and code < 300 then
+      table.insert(SyncTasksAfterAsyncTasks, { callback = resultCallback, params = { httpResponse = content } })
+    else
+      errorCallback({ errorCode = HttpDownloadErrors.NON_2XX_STATUS })
+    end
   end
 end
 
@@ -225,6 +238,71 @@ local FlightplanCostindex = 0
 
 local FlightplanAvgWindDir = 0
 local FlightplanAvgWindSpeed = 0
+
+local SimbriefFlightplanFetchStatusLevel = {
+  INFO = 0,
+  USER_RELATED = 1,
+  SYSTEM_RELATED = 2
+}
+local SimbriefFlightplanFetchStatus = {
+  NO_DOWNLOAD_ATTEMPTED = { level = SimbriefFlightplanFetchStatusLevel.INFO },
+  DOWNLOADING = { level = SimbriefFlightplanFetchStatusLevel.INFO },
+  NO_ERROR = { level = SimbriefFlightplanFetchStatusLevel.INFO },
+  UNKNOWN_DOWNLOAD_ERROR = { level = SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED },
+  UNEXPECTED_HTTP_RESPONSE_STATUS = { level = SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED },
+  NETWORK_ERROR = { level = SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED },
+  INVALID_USER_ID = { level = SimbriefFlightplanFetchStatusLevel.USER_RELATED },
+  NO_FLIGHT_PLAN_CREATED = { level = SimbriefFlightplanFetchStatusLevel.USER_RELATED },
+  UNKNOWN_ERROR_STATUS_RESPONSE_PAYLOAD = { level = SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED },
+  NO_SIMBRIEF_USER_ID_ENTERED = { level = SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED }
+}
+local CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NO_DOWNLOAD_ATTEMPTED
+local function getSimbriefFlightplanFetchStatusMessageAndColor()
+  local msg
+  if CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NO_DOWNLOAD_ATTEMPTED then
+    msg = "Download pending"
+  elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.DOWNLOADING then
+    msg = "Downloading"
+  elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NO_ERROR then
+    msg = "No error"
+  elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.UNKNOWN_DOWNLOAD_ERROR then
+    msg = "Unknown error while downloading"
+  elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS then
+    msg = "Unexpected server response"
+  elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NETWORK_ERROR then
+    msg = "Network error"
+  elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.INVALID_USER_ID then
+    msg = "Simbrief does not know your user name. Please chose another it in the Control window"
+  elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NO_FLIGHT_PLAN_CREATED then
+    msg = "No flightplan found. Please create one first in Simbrief."
+  elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.UNKNOWN_ERROR_STATUS_RESPONSE_PAYLOAD then
+    msg = "Unhandled response status message"
+  elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NO_SIMBRIEF_USER_ID_ENTERED then
+    msg = "Simbrief user name not found. Please configure it in the Control window"
+  else
+    msg = "Unknown error '" .. (CurrentSimbriefFlightplanFetchStatus or "(none)") .. "'"
+  end
+  msg = "Could not download flightplan from Simbrief: " .. msg .. "."
+  
+  local color
+  if CurrentSimbriefFlightplanFetchStatus.level == SimbriefFlightplanFetchStatusLevel.INFO then
+    color = colorNormal
+  elseif CurrentSimbriefFlightplanFetchStatus.level == SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED then
+    color = colorWarn
+  elseif CurrentSimbriefFlightplanFetchStatus.level == SimbriefFlightplanFetchStatusLevel.USER_RELATED then
+    color = colorA320Blue
+  else
+    color = colorNormal
+  end
+  
+  return msg, color
+end
+
+local function processFlightplanDownloadFailure(params)
+  if params.errorCode == HttpDownloadErrors.NON_2XX_STATUS then CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
+  elseif params.errorCode == HttpDownloadErrors.NETWORK then CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NETWORK_ERROR
+  else CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.UNKNOWN_DOWNLOAD_ERROR end
+end
 
 local function processNewFlightplan(params)
   local parser = xml2lua.parser(simbriefFlightplanXmlHandler)
@@ -312,9 +390,20 @@ local function processNewFlightplan(params)
       
       FlightplanAvgWindDir = tonumber(SimbriefFlightplan.general.avg_wind_dir)
       FlightplanAvgWindSpeed = tonumber(SimbriefFlightplan.general.avg_wind_spd)
+      
+      CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NO_ERROR
     end
   else
-    print("Flight plan states that it's not valid.")
+    print("Flight plan states that it's not valid. Reported status: " .. simbriefFlightplanXmlHandler.root.OFP.fetch.status)
+    
+    -- As of 10/2020, original message is <status>Error: Unknown UserID</status>
+    if simbriefFlightplanXmlHandler.root.OFP.fetch.status:lower():find('unknown userid') then
+      CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.INVALID_USER_ID
+    elseif simbriefFlightplanXmlHandler.root.OFP.fetch.status:lower():find('no flight plan') then
+      CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NO_FLIGHT_PLAN_CREATED
+    else
+      CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.UNKNOWN_ERROR_STATUS_RESPONSE_PAYLOAD
+    end
   end
 end
 
@@ -322,17 +411,19 @@ local function clearFlightplan()
   FlightplanId = nil
 end
 
-local function flightplanCanBeDownloaded()
+local function userHasEnteredHisSimbriefUsername()
   return VatsimbriefConfiguration.simbrief ~= nil and stringIsNotEmpty(VatsimbriefConfiguration.simbrief.username)
 end
 
 local function refreshFlightplanNow()
   copas.addthread(function()
-    if flightplanCanBeDownloaded() then
+    CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.DOWNLOADING
+    if userHasEnteredHisSimbriefUsername() then
       local url = "http://www.simbrief.com/api/xml.fetcher.php?username=" .. VatsimbriefConfiguration.simbrief.username
-      performDefaultHttpGetRequest(url, processNewFlightplan)
+      performDefaultHttpGetRequest(url, processNewFlightplan, processFlightplanDownloadFailure)
     else
       print("Not fetching flightplan. No simbrief username configured.")
+      CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NO_SIMBRIEF_USER_ID_ENTERED
     end
   end)
 end
@@ -352,6 +443,52 @@ local refreshFlightplanTimer = timer.new({
 
 local MapAtcIdentifiersToAtcInfo = {}
 local AtcIdentifiersUpdatedTimestamp = nil
+
+local VatsimDataFetchStatusLevel = {
+  INFO = 0,
+  SYSTEM_RELATED = 1
+}
+local VatsimDataFetchStatus = {
+  NO_DOWNLOAD_ATTEMPTED = { level = VatsimDataFetchStatusLevel.INFO },
+  DOWNLOADING = { level = VatsimDataFetchStatusLevel.INFO },
+  NO_ERROR = { level = VatsimDataFetchStatusLevel.INFO },
+  UNKNOWN_DOWNLOAD_ERROR = { level = VatsimDataFetchStatusLevel.SYSTEM_RELATED },
+  UNEXPECTED_HTTP_RESPONSE_STATUS = { level = VatsimDataFetchStatusLevel.SYSTEM_RELATED },
+  NETWORK_ERROR = { level = VatsimDataFetchStatusLevel.SYSTEM_RELATED }
+}
+local CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.NO_DOWNLOAD_ATTEMPTED
+local function getVatsimDataFetchStatusMessageAndColor()
+  local msg
+  if CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.NO_DOWNLOAD_ATTEMPTED then
+    msg = "Download pending"
+  elseif CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.DOWNLOADING then
+    msg = "Downloading"
+  elseif CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.NO_ERROR then
+    msg = "No error"
+  elseif CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.UNKNOWN_DOWNLOAD_ERROR then
+    msg = "Unknown error while downloading"
+  elseif CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS then
+    msg = "Unexpected server response"
+  elseif CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.NETWORK_ERROR then
+    msg = "Network error"
+  else
+    msg = "Unknown error '" .. (CurrentVatsimDataFetchStatus or "(none)") .. "'"
+  end
+  msg = "Could not download VATSIM data: " .. msg .. "."
+  
+  local color
+  if CurrentVatsimDataFetchStatus.level == VatsimDataFetchStatusLevel.INFO then
+    color = colorNormal
+  elseif CurrentVatsimDataFetchStatus.level == VatsimDataFetchStatusLevel.SYSTEM_RELATED then
+    color = colorWarn
+  elseif CurrentVatsimDataFetchStatus.level == VatsimDataFetchStatusLevel.USER_RELATED then
+    color = colorA320Blue
+  else
+    color = colorNormal
+  end
+  
+  return msg, color
+end
 
 local function splitStringBySeparator(str, separator)
   -- I wonder why lua does not offer a simple function like this. Pretty annoying.
@@ -381,6 +518,12 @@ local function splitStringBySeparator(str, separator)
   return result
 end
 
+local function processVatsimDataDownloadFailure(params)
+  if params.errorCode == HttpDownloadErrors.NON_2XX_STATUS then CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
+  elseif params.errorCode == HttpDownloadErrors.NETWORK then CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.NETWORK_ERROR
+  else CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNKNOWN_DOWNLOAD_ERROR end
+end
+
 local function processNewVatsimData(params)
   MapAtcIdentifiersToAtcInfo = {}
   local lines = splitStringBySeparator(params.httpResponse, "\n")
@@ -397,12 +540,15 @@ local function processNewVatsimData(params)
   end
   
   AtcIdentifiersUpdatedTimestamp = os.clock()
+  
+  CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.NO_ERROR
 end
 
 local function refreshVatsimDataNow()
   copas.addthread(function()
+    CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.DOWNLOADING
     local url = "http://cluster.data.vatsim.net/vatsim-data.txt"
-    performDefaultHttpGetRequest(url, processNewVatsimData)
+    performDefaultHttpGetRequest(url, processNewVatsimData, processVatsimDataDownloadFailure)
   end)
 end
 
@@ -446,7 +592,7 @@ local FlightplanWindowLastRenderedFlightplanId = nil
 local FlightplanWindowLastAtcIdentifiersUpdatedTimestamp = nil
 local FlightplanWindowHasRenderedContent = false
 
-local FlightplanWindowStatusMsg = ""
+local FlightplanWindowShowDownloadingMsg = false
 
 local FlightplanWindowAirports = ""
 local FlightplanWindowRoute = ""
@@ -459,6 +605,10 @@ local FlightplanWindowTrack = ""
 local FlightplanWindowMetars = ""
 
 local FlightplanWindowKeyWidth = 14
+
+local FlightplanWindowLastRenderedSimbriefFlightplanFetchStatus = CurrentSimbriefFlightplanFetchStatus
+local FlightplanWindowFlightplanDownloadStatus = ''
+local FlightplanWindowFlightplanDownloadStatusColor = 0
 
 local function createFlightplanTableEntry(name, value)
   return ("%-" .. FlightplanWindowKeyWidth .. "s%s"):format(name .. ':', value)
@@ -478,16 +628,24 @@ end
 function buildVatsimbriefHelperFlightplanWindowCanvas()
 	-- Invent a caching mechanism to prevent rendering the strings each frame
   local flightplanChanged = FlightplanWindowLastRenderedFlightplanId ~= FlightplanId
-  local renderContent = flightplanChanged or not FlightplanWindowHasRenderedContent
+  local flightplanFetchStatusChanged = AtcWindowLastRenderedSimbriefFlightplanFetchStatus ~= CurrentSimbriefFlightplanFetchStatus
+  local renderContent = flightplanChanged or flightplanFetchStatusChanged or not FlightplanWindowHasRenderedContent
   if renderContent then
+    -- Render download status
+    local statusType = CurrentSimbriefFlightplanFetchStatus.level
+    if statusType == SimbriefFlightplanFetchStatusLevel.USER_RELATED or statusType == SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED then
+      FlightplanWindowFlightplanDownloadStatus, FlightplanWindowFlightplanDownloadStatusColor = getSimbriefFlightplanFetchStatusMessageAndColor()
+    else
+      FlightplanWindowFlightplanDownloadStatus = ''
+      FlightplanWindowFlightplanDownloadStatusColor = colorNormal
+    end
+    
     if stringIsEmpty(FlightplanId) then
-      if flightplanCanBeDownloaded() then
-        FlightplanWindowStatusMsg = "Downloading flightplan ..."
-      else
-        FlightplanWindowStatusMsg = "Please enter Simbrief user name in configuration window."
+      if CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.DOWNLOADING then
+        FlightplanWindowShowDownloadingMsg = true
       end
     else
-      FlightplanWindowStatusMsg = ""
+      FlightplanWindowShowDownloadingMsg = false
       
       if stringIsNotEmpty(FlightplanAltIcao) then
         FlightplanWindowAirports = ("%s - %s / %s"):format(FlightplanOriginIcao, FlightplanDestIcao, FlightplanAltIcao)
@@ -552,14 +710,24 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
       FlightplanWindowMetars = createFlightplanTableEntry("METARs", FlightplanWindowMetars)
     end
     
+    FlightplanWindowLastRenderedSimbriefFlightplanFetchStatus = CurrentSimbriefFlightplanFetchStatus
     FlightplanWindowLastRenderedFlightplanId = FlightplanId
     FlightplanWindowHasRenderedContent = true
   end
   
   -- Paint
   imgui.SetWindowFontScale(1.0)
-  if stringIsNotEmpty(FlightplanWindowStatusMsg) then
-    imgui.TextUnformatted(FlightplanWindowStatusMsg)
+  
+  if stringIsNotEmpty(FlightplanWindowFlightplanDownloadStatus) then
+    imgui.PushStyleColor(imgui.constant.Col.Text, FlightplanWindowFlightplanDownloadStatusColor)
+    imgui.TextUnformatted(FlightplanWindowFlightplanDownloadStatus)
+    imgui.PopStyleColor()
+  end
+  
+  if FlightplanWindowShowDownloadingMsg then
+    imgui.PushStyleColor(imgui.constant.Col.Text, colorA320Blue)
+    imgui.TextUnformatted("Downloading flightplan ...")
+    imgui.PopStyleColor()
   else
     imgui.TextUnformatted(FlightplanWindowAirports)
     imgui.TextUnformatted(FlightplanWindowRoute)
@@ -578,6 +746,7 @@ local vatsimbriefHelperFlightplanWindow = nil
 function destroyVatsimbriefHelperFlightplanWindow()
 	if vatsimbriefHelperFlightplanWindow then
 		float_wnd_destroy(vatsimbriefHelperFlightplanWindow)
+    vatsimbriefHelperFlightplanWindow = nil
 	end
 end
 
@@ -628,6 +797,7 @@ local vatsimbriefHelperControlWindow = nil
 function destroyVatsimbriefHelperControlWindow()
 	if vatsimbriefHelperControlWindow then
 		float_wnd_destroy(vatsimbriefHelperControlWindow)
+    vatsimbriefHelperControlWindow = nil
 	end
 end
 
@@ -652,6 +822,15 @@ local AtcWindowHasRenderedContent = false
 local Route = ""
 local RouteSeparatorLine = ""
 local Atcs = ""
+
+local AtcWindowLastRenderedSimbriefFlightplanFetchStatus = CurrentSimbriefFlightplanFetchStatus
+local AtcWindowFlightplanDownloadStatus = ''
+local AtcWindowFlightplanDownloadStatusColor = 0
+
+local AtcWindowLastRenderedVatsimDataFetchStatus = CurrentVatsimDataFlightplanFetchStatus
+local AtcWindowVatsimDataDownloadStatus = ''
+local AtcWindowVatsimDataDownloadStatusColor = 0
+local showVatsimDataIsDownloading = false
 
 local function stringEndsWith(str, ending)
    return ending == "" or str:sub(-#ending) == ending
@@ -723,21 +902,17 @@ local function renderAirportAtcToString(airportIcao, airportIata)
   end
 end
 
-local a320Blue = 0xFFFFDDAA
-
 function buildVatsimbriefHelperAtcWindowCanvas()
 	-- Invent a caching mechanism to prevent rendering the strings each frame
   local flightplanChanged = AtcWindowLastRenderedFlightplanId ~= FlightplanId
   local atcIdentifiersUpdated = AtcWindowLastAtcIdentifiersUpdatedTimestamp ~= AtcIdentifiersUpdatedTimestamp
-  local renderContent = flightplanChanged or atcIdentifiersUpdated or not AtcWindowHasRenderedContent
+  local flightplanFetchStatusChanged = AtcWindowLastRenderedSimbriefFlightplanFetchStatus ~= CurrentSimbriefFlightplanFetchStatus
+  local vatsimDataFetchStatusChanged = AtcWindowLastRenderedVatsimDataFetchStatus ~= CurrentVatsimDataFetchStatus
+  local renderContent = flightplanChanged or atcIdentifiersUpdated or flightplanFetchStatusChanged or vatsimDataFetchStatusChanged or not AtcWindowHasRenderedContent
   if renderContent then
-    if stringIsEmpty(FlightplanId) then
-      if flightplanCanBeDownloaded() then
-        Route = "Downloading flightplan ..."
-      else
-        Route = "Please enter Simbrief user name in configuration window."
-      end
-    else
+    -- Render route
+    if stringIsNotEmpty(FlightplanId) then
+      -- If there's a flightplan, render it
       if stringIsNotEmpty(FlightplanAltIcao) then
         Route = FlightplanCallsign .. ":  " .. FlightplanOriginIcao .. " - " .. FlightplanDestIcao .. " / " .. FlightplanAltIcao
           .. " (" .. FlightplanOriginName .. " to " .. FlightplanDestName .. " / " .. FlightplanAltName .. ")"
@@ -745,23 +920,53 @@ function buildVatsimbriefHelperAtcWindowCanvas()
         Route = FlightplanCallsign .. ":  " .. FlightplanOriginIcao .. " - " .. FlightplanDestIcao
           .. " (" .. FlightplanOriginName .. " to " .. FlightplanDestName .. ")"
       end
+    else
+      -- It's more beautiful to show the "downloading" status in the title where the route appears in a few seconds
+      if CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.DOWNLOADING then
+        Route = "Downloading flightplan ..."
+      end
     end
     RouteSeparatorLine = string.rep("-", #Route)
     
-    if numberIsNilOrZero(AtcIdentifiersUpdatedTimestamp) then
-      Atcs = "Downloading VATSIM ATC data ..."
-    elseif stringIsEmpty(FlightplanId) then
-      Atcs = ("Got %d ATC stations. Waiting for flightplan ..."):format(#MapAtcIdentifiersToAtcInfo)
+    -- Render download status of flightplan
+    local statusType = CurrentSimbriefFlightplanFetchStatus.level
+    if statusType == SimbriefFlightplanFetchStatusLevel.USER_RELATED or statusType == SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED then
+      AtcWindowFlightplanDownloadStatus, AtcWindowFlightplanDownloadStatusColor = getSimbriefFlightplanFetchStatusMessageAndColor()
     else
-      if #MapAtcIdentifiersToAtcInfo == 0 then
-        Atcs = 'No ATCs found. This will probably be a technical problem.'
+      AtcWindowFlightplanDownloadStatus = ''
+      AtcWindowFlightplanDownloadStatusColor = colorNormal
+    end
+    
+    -- Render download status of VATSIM data
+    statusType = CurrentVatsimDataFetchStatus.level
+    if statusType == VatsimDataFetchStatusLevel.SYSTEM_RELATED then
+      AtcWindowVatsimDataDownloadStatus, AtcWindowVatsimDataDownloadStatusColor = getVatsimDataFetchStatusMessageAndColor()
+    else
+      AtcWindowVatsimDataDownloadStatus = ''
+      AtcWindowVatsimDataDownloadStatusColor = colorNormal
+    end
+    
+    if numberIsNilOrZero(AtcIdentifiersUpdatedTimestamp) then
+      Atcs = ''
+      -- Only show "downloading" message when there is no VATSIM data yet
+      showVatsimDataIsDownloading = CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.DOWNLOADING
+    else
+      showVatsimDataIsDownloading = false
+      if stringIsEmpty(FlightplanId) then
+        Atcs = ("Got %d ATC stations. Waiting for flightplan ..."):format(#MapAtcIdentifiersToAtcInfo)
       else
-        Atcs = FlightplanOriginIcao .. ": " .. renderAirportAtcToString(FlightplanOriginIcao, FlightplanOriginIata)
-          .. "\n" .. FlightplanDestIcao .. ": " .. renderAirportAtcToString(FlightplanDestIcao, FlightplanDestIata)
-        if stringIsNotEmpty(FlightplanAltIcao) then Atcs = Atcs .. "\n" .. FlightplanAltIcao .. ": " .. renderAirportAtcToString(FlightplanAltIcao, FlightplanAltIata) end
+        if #MapAtcIdentifiersToAtcInfo == 0 then
+          Atcs = 'No ATCs found. This will probably be a technical problem.'
+        else
+          Atcs = FlightplanOriginIcao .. ": " .. renderAirportAtcToString(FlightplanOriginIcao, FlightplanOriginIata)
+            .. "\n" .. FlightplanDestIcao .. ": " .. renderAirportAtcToString(FlightplanDestIcao, FlightplanDestIata)
+          if stringIsNotEmpty(FlightplanAltIcao) then Atcs = Atcs .. "\n" .. FlightplanAltIcao .. ": " .. renderAirportAtcToString(FlightplanAltIcao, FlightplanAltIata) end
+        end
       end
     end
     
+    AtcWindowLastRenderedSimbriefFlightplanFetchStatus = CurrentSimbriefFlightplanFetchStatus
+    AtcWindowLastRenderedVatsimDataFetchStatus = CurrentVatsimDataFetchStatus
     AtcWindowLastRenderedFlightplanId = FlightplanId
     AtcWindowLastAtcIdentifiersUpdatedTimestamp = AtcIdentifiersUpdatedTimestamp
     AtcWindowHasRenderedContent = true
@@ -770,20 +975,40 @@ function buildVatsimbriefHelperAtcWindowCanvas()
   -- Paint
   imgui.SetWindowFontScale(1.0)
   
-  imgui.PushStyleColor(imgui.constant.Col.Text, a320Blue)
-  imgui.TextUnformatted(Route)
-  imgui.TextUnformatted(RouteSeparatorLine)
-  imgui.PopStyleColor()
-  
-  if AtcIdentifiersUpdatedTimestamp ~= nil then
+  if stringIsNotEmpty(AtcWindowFlightplanDownloadStatus) then
+    imgui.PushStyleColor(imgui.constant.Col.Text, AtcWindowFlightplanDownloadStatusColor)
+    imgui.TextUnformatted(AtcWindowFlightplanDownloadStatus)
+    imgui.PopStyleColor()
+  elseif stringIsNotEmpty(AtcWindowVatsimDataDownloadStatus) then
+    -- Why elseif? For user comfort, we don't show Flightplan AND VATSIM errors at the same time.
+    -- If the network is broken, this looks ugly.
+    -- The flightplan error is much more generic and contains more infromation, e.g. that
+    -- a user name is missing. Therefore, give it the preference.
+    imgui.PushStyleColor(imgui.constant.Col.Text, AtcWindowVatsimDataDownloadStatusColor)
+    imgui.TextUnformatted(AtcWindowVatsimDataDownloadStatus)
+    imgui.PopStyleColor()
+  end
+  if stringIsNotEmpty(Route) then
+    imgui.PushStyleColor(imgui.constant.Col.Text, colorA320Blue)
+    imgui.TextUnformatted(Route)
+    imgui.TextUnformatted(RouteSeparatorLine)
+    imgui.PopStyleColor()
+  end
+  if AtcIdentifiersUpdatedTimestamp ~= nil then -- Show information if data is old
     local ageOfAtcDataMinutes = math.floor((os.clock() - AtcIdentifiersUpdatedTimestamp) * (1.0 / 60.0))
     if ageOfAtcDataMinutes >= 3 then
-      imgui.PushStyleColor(imgui.constant.Col.Text, 0xFF8888FF)
-      imgui.TextUnformatted(("No ATC data for %d minutes!"):format(ageOfAtcDataMinutes))
+      imgui.PushStyleColor(imgui.constant.Col.Text, colorWarn)
+      -- Note: Render text here as the minutes update every minute and not "on event" when a re-rendering occurs
+      imgui.TextUnformatted(("No new VATSIM data for %d minutes!"):format(ageOfAtcDataMinutes))
       imgui.PopStyleColor()
     end
   end
-  imgui.TextUnformatted(Atcs)
+  if showVatsimDataIsDownloading then
+    imgui.TextUnformatted("Downloading VATSIM data ...")
+  end
+  if stringIsNotEmpty(Atcs) then
+    imgui.TextUnformatted(Atcs)
+  end
 end
 
 local vatsimbriefHelperAtcWindow = nil
@@ -791,6 +1016,7 @@ local vatsimbriefHelperAtcWindow = nil
 function destroyVatsimbriefHelperAtcWindow()
 	if vatsimbriefHelperAtcWindow then
 		float_wnd_destroy(vatsimbriefHelperAtcWindow)
+    vatsimbriefHelperAtcWindow = nil
 	end
 end
 
@@ -807,6 +1033,6 @@ add_macro("Vatsimbrief Helper ATC", "createVatsimbriefHelperAtcWindow()", "destr
 -- Initially open some windows
 createVatsimbriefHelperAtcWindow()
 createVatsimbriefHelperFlightplanWindow()
-if not flightplanCanBeDownloaded() then
+if not userHasEnteredHisSimbriefUsername() then
   createVatsimbriefHelperControlWindow()
 end
