@@ -206,6 +206,7 @@ local FlightplanTocTemp = 0
 local FlightplanBlockFuel = 0
 local FlightplanReserveFuel = 0
 local FlightplanTakeoffFuel = 0
+local FlightplanAltFuel = 0
 
 local FlightplanUnit = ""
 
@@ -217,6 +218,9 @@ local FlightplanZfw = 0
 local FlightplanDistance = 0
 local FlightplanAltDistance = 0
 local FlightplanCostindex = 0
+
+local FlightplanAvgWindDir = 0
+local FlightplanAvgWindSpeed = 0
 
 local function processNewFlightplan(params)
   local parser = xml2lua.parser(simbriefFlightplanXmlHandler)
@@ -247,7 +251,9 @@ local function processNewFlightplan(params)
       FlightplanCallsign = SimbriefFlightplan.atc.callsign
       
       FlightplanRoute = SimbriefFlightplan.general.route
+      if stringIsEmpty(FlightplanRoute) then FlightplanRoute = "(none)" end
       FlightplanAltRoute = SimbriefFlightplan.alternate.route
+      if stringIsEmpty(FlightplanAltRoute) then FlightplanAltRoute = "(none)" end
       
       FlightplanSchedOut = tonumber(SimbriefFlightplan.times.sched_out)
       FlightplanSchedOff = tonumber(SimbriefFlightplan.times.sched_off)
@@ -256,14 +262,20 @@ local function processNewFlightplan(params)
       FlightplanSchedBlock = tonumber(SimbriefFlightplan.times.sched_block)
       
       -- TOC waypoint is identified by "TOC"
-      local indexOfToc = 1
-      while indexOfToc <= #SimbriefFlightplan.navlog.fix and SimbriefFlightplan.navlog.fix[indexOfToc].ident ~= "TOC" do
-        indexOfToc = indexOfToc + 1
+      -- It seems flightplans w/o route are also possible to create.
+      local haveToc = false
+      if SimbriefFlightplan.navlog ~= nil and SimbriefFlightplan.navlog.fix ~= nil then
+        local indexOfToc = 1
+        while indexOfToc <= #SimbriefFlightplan.navlog.fix and SimbriefFlightplan.navlog.fix[indexOfToc].ident ~= "TOC" do
+          indexOfToc = indexOfToc + 1
+        end
+        if indexOfToc <= #SimbriefFlightplan.navlog.fix then
+          FlightplanAltitude = tonumber(SimbriefFlightplan.navlog.fix[indexOfToc].altitude_feet)
+          FlightplanTocTemp = tonumber(SimbriefFlightplan.navlog.fix[indexOfToc].oat)
+          haveToc = true
+        end
       end
-      if indexOfToc <= #SimbriefFlightplan.navlog.fix then
-        FlightplanAltitude = tonumber(SimbriefFlightplan.navlog.fix[indexOfToc].altitude_feet)
-        FlightplanTocTemp = tonumber(SimbriefFlightplan.navlog.fix[indexOfToc].oat)
-      else
+      if not haveToc then
         -- No TOC found!?
         FlightplanAltitude = tonumber(SimbriefFlightplan.general.initial_altitude)
         FlightplanTocTemp = 9999 -- Some "bad" value
@@ -271,8 +283,9 @@ local function processNewFlightplan(params)
       FlightplanAltAltitude = tonumber(SimbriefFlightplan.alternate.cruise_altitude)
       
       FlightplanBlockFuel = tonumber(SimbriefFlightplan.fuel.plan_ramp)
-      FlightplanReserveFuel = tonumber(SimbriefFlightplan.fuel.min_takeoff)
-      FlightplanTakeoffFuel = tonumber(SimbriefFlightplan.fuel.reserve)
+      FlightplanReserveFuel = tonumber(SimbriefFlightplan.fuel.reserve)
+      FlightplanTakeoffFuel = tonumber(SimbriefFlightplan.fuel.min_takeoff)
+      FlightplanAltFuel = tonumber(SimbriefFlightplan.fuel.alternate_burn)
       
       FlightplanUnit = SimbriefFlightplan.params.units
       
@@ -288,6 +301,9 @@ local function processNewFlightplan(params)
       FlightplanOriginMetar = removeLinebreaksFromString(SimbriefFlightplan.weather.orig_metar)
       FlightplanDestMetar = removeLinebreaksFromString(SimbriefFlightplan.weather.dest_metar)
       FlightplanAltMetar = removeLinebreaksFromString(SimbriefFlightplan.weather.altn_metar)
+      
+      FlightplanAvgWindDir = tonumber(SimbriefFlightplan.general.avg_wind_dir)
+      FlightplanAvgWindSpeed = tonumber(SimbriefFlightplan.general.avg_wind_spd)
     end
   else
     print("Flight plan states that it's not valid.")
@@ -498,8 +514,9 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
       end
       FlightplanWindowAltitudeAndTemp = createFlightplanTableEntry("Cruise", FlightplanWindowAltitudeAndTemp)
       
-      FlightplanWindowFuel = ("BLOCK=%d%s RESERVE=%d%s T/O=%d%s"):format(
+      FlightplanWindowFuel = ("BLOCK=%d%s ALTN=%d%s RESERVE=%d%s T/O=%d%s"):format(
         FlightplanBlockFuel, FlightplanUnit,
+        FlightplanAltFuel, FlightplanUnit,
         FlightplanReserveFuel, FlightplanUnit,
         FlightplanTakeoffFuel, FlightplanUnit)
       FlightplanWindowFuel = createFlightplanTableEntry("Fuel", FlightplanWindowFuel)
@@ -512,11 +529,11 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
       FlightplanWindowWeights = createFlightplanTableEntry("Weights", FlightplanWindowWeights)
       
       if stringIsNotEmpty(FlightplanAltIcao) then
-        FlightplanWindowTrack = ("DIST=%d/%d BLOCKTIME=%s CI=%d"):format(
-          FlightplanDistance, FlightplanAltDistance, timespanToHm(FlightplanSchedBlock), FlightplanCostindex)
+        FlightplanWindowTrack = ("DIST=%d/%d BLOCKTIME=%s CI=%d WINDDIR=%d WINDSPD=%d"):format(
+          FlightplanDistance, FlightplanAltDistance, timespanToHm(FlightplanSchedBlock), FlightplanCostindex, FlightplanAvgWindDir, FlightplanAvgWindSpeed)
       else
-        FlightplanWindowTrack = ("DIST=%d BLOCKTIME=%s CI=%d"):format(
-          FlightplanDistance, timespanToHm(FlightplanSchedBlock), FlightplanCostindex)
+        FlightplanWindowTrack = ("DIST=%d BLOCKTIME=%s CI=%d WINDDIR=%d WINDSPD=%d"):format(
+          FlightplanDistance, timespanToHm(FlightplanSchedBlock), FlightplanCostindex, FlightplanAvgWindDir, FlightplanAvgWindSpeed)
       end
       FlightplanWindowTrack = createFlightplanTableEntry("Track", FlightplanWindowTrack)
       
