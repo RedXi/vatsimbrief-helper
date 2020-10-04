@@ -300,7 +300,11 @@ local function processNewFlightplan(params)
       
       FlightplanOriginMetar = removeLinebreaksFromString(SimbriefFlightplan.weather.orig_metar)
       FlightplanDestMetar = removeLinebreaksFromString(SimbriefFlightplan.weather.dest_metar)
-      FlightplanAltMetar = removeLinebreaksFromString(SimbriefFlightplan.weather.altn_metar)
+      if type(SimbriefFlightplan.weather.altn_metar) == "string" then
+        FlightplanAltMetar = removeLinebreaksFromString(SimbriefFlightplan.weather.altn_metar)
+      else
+        FlightplanAltMetar = ''
+      end
       
       FlightplanAvgWindDir = tonumber(SimbriefFlightplan.general.avg_wind_dir)
       FlightplanAvgWindSpeed = tonumber(SimbriefFlightplan.general.avg_wind_spd)
