@@ -40,10 +40,14 @@ They are bundled with the release artifact.
 
 ## FAQ
 
-*Could more interactivity be provided to the plugin, e.g. the remaining time to scheduled take off?*
+*Could the plugin provide more automatism and/or interactivity, e.g. calculate the remaining time to scheduled take off?*
 
 The plugin is not going to become another FMC. It's meant to provide the pilot with necessary information to do his job.
 
 *I'm not using VATSIM. Does it make sense to use this plugin?*
 
-One can close the ATC window and only use the flight plan information. On the other hand, only using VATSIM without Simbrief does not make sense as the output of the ATC window depends on an active flight plan.
+One can close the ATC window and only use the precious flight plan information. On the other hand, only using VATSIM without Simbrief does not make sense as the output of the ATC window depends on an active flight plan.
+
+## Feedback
+
+You're welcome to provide feedback or report issues on [gitlab](https://github.com/RedXi/vatsimbrief-helper).
