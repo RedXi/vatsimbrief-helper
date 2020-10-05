@@ -274,7 +274,7 @@ local function getSimbriefFlightplanFetchStatusMessageAndColor()
   elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.INVALID_USER_NAME then
     msg = "Please set a correct Simbrief user name in the Control window"
   elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NO_FLIGHT_PLAN_CREATED then
-    msg = "No flightplan found. Please create one first in Simbrief."
+    msg = "No flight plan found. Please create one first in Simbrief."
   elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.UNKNOWN_ERROR_STATUS_RESPONSE_PAYLOAD then
     msg = "Unhandled response status message"
   elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NO_SIMBRIEF_USER_ID_ENTERED then
@@ -282,7 +282,7 @@ local function getSimbriefFlightplanFetchStatusMessageAndColor()
   else
     msg = "Unknown error '" .. (CurrentSimbriefFlightplanFetchStatus or "(none)") .. "'"
   end
-  msg = "Could not download flightplan from Simbrief: " .. msg .. "."
+  msg = "Could not download flight plan from Simbrief: " .. msg .. "."
   
   local color
   if CurrentSimbriefFlightplanFetchStatus.level == SimbriefFlightplanFetchStatusLevel.INFO then
@@ -429,7 +429,7 @@ local function refreshFlightplanNow()
       local url = "http://www.simbrief.com/api/xml.fetcher.php?username=" .. VatsimbriefConfiguration.simbrief.username
       performDefaultHttpGetRequest(url, processNewFlightplan, processFlightplanDownloadFailure)
     else
-      print("Not fetching flightplan. No simbrief username configured.")
+      print("Not fetching flight plan. No simbrief username configured.")
       CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NO_SIMBRIEF_USER_ID_ENTERED
       
       -- Display configuration window if there's something wrong with the user name
@@ -742,7 +742,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
   
   if FlightplanWindowShowDownloadingMsg then
     imgui.PushStyleColor(imgui.constant.Col.Text, colorA320Blue)
-    imgui.TextUnformatted("Downloading flightplan ...")
+    imgui.TextUnformatted("Downloading flight plan ...")
     imgui.PopStyleColor()
   else
     imgui.TextUnformatted(FlightplanWindowAirports)
@@ -769,12 +769,12 @@ end
 function createVatsimbriefHelperFlightplanWindow()
   tryVatsimbriefHelperInit()
 	vatsimbriefHelperControlWindow = float_wnd_create(800, 200, 1, true)
-	float_wnd_set_title(vatsimbriefHelperControlWindow, "Vatsimbrief Helper Flightplan")
+	float_wnd_set_title(vatsimbriefHelperControlWindow, "Vatsimbrief Helper Flight Plan")
 	float_wnd_set_imgui_builder(vatsimbriefHelperControlWindow, "buildVatsimbriefHelperFlightplanWindowCanvas")
 	float_wnd_set_onclose(vatsimbriefHelperControlWindow, "destroyVatsimbriefHelperFlightplanWindow")
 end
 
-add_macro("Vatsimbrief Helper Flightplan", "createVatsimbriefHelperFlightplanWindow()", "destroyVatsimbriefHelperFlightplanWindow()", "deactivate")
+add_macro("Vatsimbrief Helper Flight Plan", "createVatsimbriefHelperFlightplanWindow()", "destroyVatsimbriefHelperFlightplanWindow()", "deactivate")
 
 --
 -- Control UI handling
@@ -804,7 +804,7 @@ function buildVatsimbriefHelperControlWindowCanvas()
     inputUserName = '' -- Clear input line to keep user anonymous (in case he's streaming)
   end
   
-  if imgui.Button("Reload Flightplan") then
+  if imgui.Button("Reload Flight Plan") then
     clearFlightplan()
     refreshFlightplanNow()
   end
@@ -966,7 +966,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     else
       -- It's more beautiful to show the "downloading" status in the title where the route appears in a few seconds
       if CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.DOWNLOADING then
-        Route = "Downloading flightplan ..."
+        Route = "Downloading flight plan ..."
       else
         Route = '' -- Clear previous state, e.g. don't show "downloading" when there's already an error
       end
@@ -981,7 +981,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     else
       showVatsimDataIsDownloading = false
       if stringIsEmpty(FlightplanId) then
-        Atcs = ("Got %d ATC stations. Waiting for flightplan ..."):format(#MapAtcIdentifiersToAtcInfo)
+        Atcs = ("Got %d ATC stations. Waiting for flight plan ..."):format(#MapAtcIdentifiersToAtcInfo)
       else
         if #MapAtcIdentifiersToAtcInfo == 0 then
           Atcs = 'No ATCs found. This will probably be a technical problem.'
