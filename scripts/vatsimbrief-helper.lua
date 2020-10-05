@@ -148,7 +148,7 @@ local http = require("copas.http")
 
 local HttpDownloadErrors = {
   NETWORK = 1,
-  NON_2XX_STATUS = 2
+  INTERNAL_SERVER_ERROR = 2
 }
 
 local function performDefaultHttpGetRequest(url, resultCallback, errorCallback)
@@ -164,10 +164,10 @@ local function performDefaultHttpGetRequest(url, resultCallback, errorCallback)
     print(("Request URL: %s, duration: %.2fs, response status: %s, response length: %d bytes")
       :format(url, os.clock() - t0, status, #content))
   
-    if code >= 200 and code < 300 then
-      table.insert(SyncTasksAfterAsyncTasks, { callback = resultCallback, params = { httpResponse = content } })
+    if code < 500 then
+      table.insert(SyncTasksAfterAsyncTasks, { callback = resultCallback, params = { httpResponse = content, httpStatusCode = code } })
     else
-      errorCallback({ errorCode = HttpDownloadErrors.NON_2XX_STATUS })
+      errorCallback({ errorCode = HttpDownloadErrors.INTERNAL_SERVER_ERROR })
     end
   end
 end
@@ -251,7 +251,7 @@ local SimbriefFlightplanFetchStatus = {
   UNKNOWN_DOWNLOAD_ERROR = { level = SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED },
   UNEXPECTED_HTTP_RESPONSE_STATUS = { level = SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED },
   NETWORK_ERROR = { level = SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED },
-  INVALID_USER_ID = { level = SimbriefFlightplanFetchStatusLevel.USER_RELATED },
+  INVALID_USER_NAME = { level = SimbriefFlightplanFetchStatusLevel.USER_RELATED },
   NO_FLIGHT_PLAN_CREATED = { level = SimbriefFlightplanFetchStatusLevel.USER_RELATED },
   UNKNOWN_ERROR_STATUS_RESPONSE_PAYLOAD = { level = SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED },
   NO_SIMBRIEF_USER_ID_ENTERED = { level = SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED }
@@ -271,14 +271,14 @@ local function getSimbriefFlightplanFetchStatusMessageAndColor()
     msg = "Unexpected server response"
   elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NETWORK_ERROR then
     msg = "Network error"
-  elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.INVALID_USER_ID then
-    msg = "Simbrief does not know your user name. Please chose another it in the Control window"
+  elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.INVALID_USER_NAME then
+    msg = "Please set a correct Simbrief user name in the Control window"
   elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NO_FLIGHT_PLAN_CREATED then
     msg = "No flightplan found. Please create one first in Simbrief."
   elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.UNKNOWN_ERROR_STATUS_RESPONSE_PAYLOAD then
     msg = "Unhandled response status message"
   elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NO_SIMBRIEF_USER_ID_ENTERED then
-    msg = "Simbrief user name not found. Please configure it in the Control window"
+    msg = "Please enter your Simbrief user name it in the Control window"
   else
     msg = "Unknown error '" .. (CurrentSimbriefFlightplanFetchStatus or "(none)") .. "'"
   end
@@ -299,111 +299,118 @@ local function getSimbriefFlightplanFetchStatusMessageAndColor()
 end
 
 local function processFlightplanDownloadFailure(params)
-  if params.errorCode == HttpDownloadErrors.NON_2XX_STATUS then CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
+  if params.errorCode == HttpDownloadErrors.INTERNAL_SERVER_ERROR then CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
   elseif params.errorCode == HttpDownloadErrors.NETWORK then CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NETWORK_ERROR
   else CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.UNKNOWN_DOWNLOAD_ERROR end
 end
 
 local function processNewFlightplan(params)
-  local parser = xml2lua.parser(simbriefFlightplanXmlHandler)
-  parser:parse(params.httpResponse)
-  if simbriefFlightplanXmlHandler.root.OFP.fetch.status == "Success" then
-    SimbriefFlightplan = simbriefFlightplanXmlHandler.root.OFP
-    
-    newFlightplanId = SimbriefFlightplan.params.request_id .. "|" .. SimbriefFlightplan.params.time_generated
-      -- We just guess that this PK definition yields "enough uniqueness"
-    if newFlightplanId ~= FlightplanId then -- Flightplan changed
-      FlightplanId = newFlightplanId
-      
-      FlightplanOriginIcao = SimbriefFlightplan.origin.icao_code
-      FlightplanOriginIata = SimbriefFlightplan.origin.iata_code
-      FlightplanOriginName = SimbriefFlightplan.origin.name
-      FlightplanOriginRunway = SimbriefFlightplan.origin.plan_rwy
-      
-      FlightplanDestIcao = SimbriefFlightplan.destination.icao_code
-      FlightplanDestIata = SimbriefFlightplan.destination.iata_code
-      FlightplanDestName = SimbriefFlightplan.destination.name
-      FlightplanDestRunway = SimbriefFlightplan.destination.plan_rwy
-      
-      FlightplanAltIcao = SimbriefFlightplan.alternate.icao_code
-      FlightplanAltIata = SimbriefFlightplan.alternate.iata_code
-      FlightplanAltName = SimbriefFlightplan.alternate.name
-      FlightplanAltRunway = SimbriefFlightplan.alternate.plan_rwy
-      
-      FlightplanCallsign = SimbriefFlightplan.atc.callsign
-      
-      FlightplanRoute = SimbriefFlightplan.general.route
-      if stringIsEmpty(FlightplanRoute) then FlightplanRoute = "(none)" end
-      FlightplanAltRoute = SimbriefFlightplan.alternate.route
-      if stringIsEmpty(FlightplanAltRoute) then FlightplanAltRoute = "(none)" end
-      
-      FlightplanSchedOut = tonumber(SimbriefFlightplan.times.sched_out)
-      FlightplanSchedOff = tonumber(SimbriefFlightplan.times.sched_off)
-      FlightplanSchedOn = tonumber(SimbriefFlightplan.times.sched_on)
-      FlightplanSchedIn = tonumber(SimbriefFlightplan.times.sched_in)
-      FlightplanSchedBlock = tonumber(SimbriefFlightplan.times.sched_block)
-      
-      -- TOC waypoint is identified by "TOC"
-      -- It seems flightplans w/o route are also possible to create.
-      local haveToc = false
-      if SimbriefFlightplan.navlog ~= nil and SimbriefFlightplan.navlog.fix ~= nil then
-        local indexOfToc = 1
-        while indexOfToc <= #SimbriefFlightplan.navlog.fix and SimbriefFlightplan.navlog.fix[indexOfToc].ident ~= "TOC" do
-          indexOfToc = indexOfToc + 1
-        end
-        if indexOfToc <= #SimbriefFlightplan.navlog.fix then
-          FlightplanAltitude = tonumber(SimbriefFlightplan.navlog.fix[indexOfToc].altitude_feet)
-          FlightplanTocTemp = tonumber(SimbriefFlightplan.navlog.fix[indexOfToc].oat)
-          haveToc = true
-        end
-      end
-      if not haveToc then
-        -- No TOC found!?
-        FlightplanAltitude = tonumber(SimbriefFlightplan.general.initial_altitude)
-        FlightplanTocTemp = 9999 -- Some "bad" value
-      end
-      FlightplanAltAltitude = tonumber(SimbriefFlightplan.alternate.cruise_altitude)
-      
-      FlightplanBlockFuel = tonumber(SimbriefFlightplan.fuel.plan_ramp)
-      FlightplanReserveFuel = tonumber(SimbriefFlightplan.fuel.reserve)
-      FlightplanTakeoffFuel = tonumber(SimbriefFlightplan.fuel.min_takeoff)
-      FlightplanAltFuel = tonumber(SimbriefFlightplan.fuel.alternate_burn)
-      
-      FlightplanUnit = SimbriefFlightplan.params.units
-      
-      FlightplanCargo = tonumber(SimbriefFlightplan.weights.cargo)
-      FlightplanPax = tonumber(SimbriefFlightplan.weights.pax_count)
-      FlightplanPayload = tonumber(SimbriefFlightplan.weights.payload)
-      FlightplanZfw = tonumber(SimbriefFlightplan.weights.est_zfw)
-      
-      FlightplanDistance = SimbriefFlightplan.general.route_distance
-      FlightplanAltDistance = SimbriefFlightplan.alternate.distance
-      FlightplanCostindex = SimbriefFlightplan.general.costindex
-      
-      FlightplanOriginMetar = removeLinebreaksFromString(SimbriefFlightplan.weather.orig_metar)
-      FlightplanDestMetar = removeLinebreaksFromString(SimbriefFlightplan.weather.dest_metar)
-      if type(SimbriefFlightplan.weather.altn_metar) == "string" then
-        FlightplanAltMetar = removeLinebreaksFromString(SimbriefFlightplan.weather.altn_metar)
-      else
-        FlightplanAltMetar = ''
-      end
-      
-      FlightplanAvgWindDir = tonumber(SimbriefFlightplan.general.avg_wind_dir)
-      FlightplanAvgWindSpeed = tonumber(SimbriefFlightplan.general.avg_wind_spd)
-      
-      CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NO_ERROR
-    end
+  if params.httpStatusCode ~= 200 and params.httpStatusCode ~= 400 then
+    CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
   else
-    print("Flight plan states that it's not valid. Reported status: " .. simbriefFlightplanXmlHandler.root.OFP.fetch.status)
-    
-    -- As of 10/2020, original message is <status>Error: Unknown UserID</status>
-    if simbriefFlightplanXmlHandler.root.OFP.fetch.status:lower():find('unknown userid') then
-      CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.INVALID_USER_ID
-    elseif simbriefFlightplanXmlHandler.root.OFP.fetch.status:lower():find('no flight plan') then
-      CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NO_FLIGHT_PLAN_CREATED
+    local parser = xml2lua.parser(simbriefFlightplanXmlHandler)
+    parser:parse(params.httpResponse)
+    if params.httpStatusCode == 200 and simbriefFlightplanXmlHandler.root.OFP.fetch.status == "Success" then
+      SimbriefFlightplan = simbriefFlightplanXmlHandler.root.OFP
+      
+      newFlightplanId = SimbriefFlightplan.params.request_id .. "|" .. SimbriefFlightplan.params.time_generated
+        -- We just guess that this PK definition yields "enough uniqueness"
+      if newFlightplanId ~= FlightplanId then -- Flightplan changed
+        FlightplanId = newFlightplanId
+        
+        FlightplanOriginIcao = SimbriefFlightplan.origin.icao_code
+        FlightplanOriginIata = SimbriefFlightplan.origin.iata_code
+        FlightplanOriginName = SimbriefFlightplan.origin.name
+        FlightplanOriginRunway = SimbriefFlightplan.origin.plan_rwy
+        
+        FlightplanDestIcao = SimbriefFlightplan.destination.icao_code
+        FlightplanDestIata = SimbriefFlightplan.destination.iata_code
+        FlightplanDestName = SimbriefFlightplan.destination.name
+        FlightplanDestRunway = SimbriefFlightplan.destination.plan_rwy
+        
+        FlightplanAltIcao = SimbriefFlightplan.alternate.icao_code
+        FlightplanAltIata = SimbriefFlightplan.alternate.iata_code
+        FlightplanAltName = SimbriefFlightplan.alternate.name
+        FlightplanAltRunway = SimbriefFlightplan.alternate.plan_rwy
+        
+        FlightplanCallsign = SimbriefFlightplan.atc.callsign
+        
+        FlightplanRoute = SimbriefFlightplan.general.route
+        if stringIsEmpty(FlightplanRoute) then FlightplanRoute = "(none)" end
+        FlightplanAltRoute = SimbriefFlightplan.alternate.route
+        if stringIsEmpty(FlightplanAltRoute) then FlightplanAltRoute = "(none)" end
+        
+        FlightplanSchedOut = tonumber(SimbriefFlightplan.times.sched_out)
+        FlightplanSchedOff = tonumber(SimbriefFlightplan.times.sched_off)
+        FlightplanSchedOn = tonumber(SimbriefFlightplan.times.sched_on)
+        FlightplanSchedIn = tonumber(SimbriefFlightplan.times.sched_in)
+        FlightplanSchedBlock = tonumber(SimbriefFlightplan.times.sched_block)
+        
+        -- TOC waypoint is identified by "TOC"
+        -- It seems flightplans w/o route are also possible to create.
+        local haveToc = false
+        if SimbriefFlightplan.navlog ~= nil and SimbriefFlightplan.navlog.fix ~= nil then
+          local indexOfToc = 1
+          while indexOfToc <= #SimbriefFlightplan.navlog.fix and SimbriefFlightplan.navlog.fix[indexOfToc].ident ~= "TOC" do
+            indexOfToc = indexOfToc + 1
+          end
+          if indexOfToc <= #SimbriefFlightplan.navlog.fix then
+            FlightplanAltitude = tonumber(SimbriefFlightplan.navlog.fix[indexOfToc].altitude_feet)
+            FlightplanTocTemp = tonumber(SimbriefFlightplan.navlog.fix[indexOfToc].oat)
+            haveToc = true
+          end
+        end
+        if not haveToc then
+          -- No TOC found!?
+          FlightplanAltitude = tonumber(SimbriefFlightplan.general.initial_altitude)
+          FlightplanTocTemp = 9999 -- Some "bad" value
+        end
+        FlightplanAltAltitude = tonumber(SimbriefFlightplan.alternate.cruise_altitude)
+        
+        FlightplanBlockFuel = tonumber(SimbriefFlightplan.fuel.plan_ramp)
+        FlightplanReserveFuel = tonumber(SimbriefFlightplan.fuel.reserve)
+        FlightplanTakeoffFuel = tonumber(SimbriefFlightplan.fuel.min_takeoff)
+        FlightplanAltFuel = tonumber(SimbriefFlightplan.fuel.alternate_burn)
+        
+        FlightplanUnit = SimbriefFlightplan.params.units
+        
+        FlightplanCargo = tonumber(SimbriefFlightplan.weights.cargo)
+        FlightplanPax = tonumber(SimbriefFlightplan.weights.pax_count)
+        FlightplanPayload = tonumber(SimbriefFlightplan.weights.payload)
+        FlightplanZfw = tonumber(SimbriefFlightplan.weights.est_zfw)
+        
+        FlightplanDistance = SimbriefFlightplan.general.route_distance
+        FlightplanAltDistance = SimbriefFlightplan.alternate.distance
+        FlightplanCostindex = SimbriefFlightplan.general.costindex
+        
+        FlightplanOriginMetar = removeLinebreaksFromString(SimbriefFlightplan.weather.orig_metar)
+        FlightplanDestMetar = removeLinebreaksFromString(SimbriefFlightplan.weather.dest_metar)
+        if type(SimbriefFlightplan.weather.altn_metar) == "string" then
+          FlightplanAltMetar = removeLinebreaksFromString(SimbriefFlightplan.weather.altn_metar)
+        else
+          FlightplanAltMetar = ''
+        end
+        
+        FlightplanAvgWindDir = tonumber(SimbriefFlightplan.general.avg_wind_dir)
+        FlightplanAvgWindSpeed = tonumber(SimbriefFlightplan.general.avg_wind_spd)
+        
+        CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NO_ERROR
+      end
     else
-      CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.UNKNOWN_ERROR_STATUS_RESPONSE_PAYLOAD
+      print("Flight plan states that it's not valid. Reported status: " .. simbriefFlightplanXmlHandler.root.OFP.fetch.status)
+      
+      -- As of 10/2020, original message is <status>Error: Unknown UserID</status>
+      if params.httpStatusCode == 400 and simbriefFlightplanXmlHandler.root.OFP.fetch.status:lower():find('unknown userid') then
+        CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.INVALID_USER_NAME
+      elseif simbriefFlightplanXmlHandler.root.OFP.fetch.status:lower():find('no flight plan') then
+        CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NO_FLIGHT_PLAN_CREATED
+      else
+        CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.UNKNOWN_ERROR_STATUS_RESPONSE_PAYLOAD
+      end
     end
+    
+    -- Display configuration window if there's something wrong with the user name
+    if CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.INVALID_USER_NAME then createVatsimbriefHelperControlWindow() end
   end
 end
 
@@ -424,6 +431,9 @@ local function refreshFlightplanNow()
     else
       print("Not fetching flightplan. No simbrief username configured.")
       CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NO_SIMBRIEF_USER_ID_ENTERED
+      
+      -- Display configuration window if there's something wrong with the user name
+      createVatsimbriefHelperControlWindow()
     end
   end)
 end
@@ -519,29 +529,33 @@ local function splitStringBySeparator(str, separator)
 end
 
 local function processVatsimDataDownloadFailure(params)
-  if params.errorCode == HttpDownloadErrors.NON_2XX_STATUS then CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
+  if params.errorCode == HttpDownloadErrors.INTERNAL_SERVER_ERROR then CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
   elseif params.errorCode == HttpDownloadErrors.NETWORK then CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.NETWORK_ERROR
   else CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNKNOWN_DOWNLOAD_ERROR end
 end
 
 local function processNewVatsimData(params)
-  MapAtcIdentifiersToAtcInfo = {}
-  local lines = splitStringBySeparator(params.httpResponse, "\n")
-  for _, line in ipairs(lines) do
-    -- Example line: SBWJ_APP:1030489:hamilton junior:ATC:119.000:-23.37825:-46.84175:0:0::::::SINGAPORE:100:4:0:5:159::::::::::::0:0:0:0:ATIS B 2200Z   ^Â§SBRJ VMC QNH 1007 DEP/ARR RWY 20LRNAV D/E^Â§SBGL VMC QNH 1008  DEP/ARR RWY 10 ILS X:20201002211135:20201002211135:0:0:0:
-    
-    -- Filter ATC lines heuristically not to waste time for splitting the line into parts
-    if line:find(":ATC:") ~= nil then
-      local parts = splitStringBySeparator(line, ':')
-      if table.getn(parts) >= 5 and parts[4] == 'ATC' then
-        table.insert(MapAtcIdentifiersToAtcInfo, { id = parts[1], frequency = parts[5] })
+  if params.httpStatusCode ~= 200 then
+    CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
+  else
+    MapAtcIdentifiersToAtcInfo = {}
+    local lines = splitStringBySeparator(params.httpResponse, "\n")
+    for _, line in ipairs(lines) do
+      -- Example line: SBWJ_APP:1030489:hamilton junior:ATC:119.000:-23.37825:-46.84175:0:0::::::SINGAPORE:100:4:0:5:159::::::::::::0:0:0:0:ATIS B 2200Z   ^Â§SBRJ VMC QNH 1007 DEP/ARR RWY 20LRNAV D/E^Â§SBGL VMC QNH 1008  DEP/ARR RWY 10 ILS X:20201002211135:20201002211135:0:0:0:
+      
+      -- Filter ATC lines heuristically not to waste time for splitting the line into parts
+      if line:find(":ATC:") ~= nil then
+        local parts = splitStringBySeparator(line, ':')
+        if table.getn(parts) >= 5 and parts[4] == 'ATC' then
+          table.insert(MapAtcIdentifiersToAtcInfo, { id = parts[1], frequency = parts[5] })
+        end
       end
     end
+    
+    AtcIdentifiersUpdatedTimestamp = os.clock()
+    
+    CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.NO_ERROR
   end
-  
-  AtcIdentifiersUpdatedTimestamp = os.clock()
-  
-  CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.NO_ERROR
 end
 
 local function refreshVatsimDataNow()
@@ -643,6 +657,8 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
     if stringIsEmpty(FlightplanId) then
       if CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.DOWNLOADING then
         FlightplanWindowShowDownloadingMsg = true
+      else
+        FlightplanWindowShowDownloadingMsg = false -- Clear message if there's another message going on, e.g. a download error
       end
     else
       FlightplanWindowShowDownloadingMsg = false
@@ -769,7 +785,14 @@ local inputUserName = ""
 function buildVatsimbriefHelperControlWindowCanvas()
 	imgui.SetWindowFontScale(1.0)
   
+  local userNameInvalid = CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.INVALID_USER_NAME or CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NO_SIMBRIEF_USER_ID_ENTERED
+  if userNameInvalid then
+    imgui.PushStyleColor(imgui.constant.Col.Text, colorErr)
+  end
   local changeFlag, newUserName = imgui.InputText("Simbrief Username", inputUserName, 255)
+  if userNameInvalid then
+    imgui.PopStyleColor()
+  end
   if changeFlag then inputUserName = newUserName end
   imgui.SameLine()
   if imgui.Button("Set") then
@@ -803,10 +826,12 @@ end
 
 function createVatsimbriefHelperControlWindow()
   tryVatsimbriefHelperInit()
-	vatsimbriefHelperControlWindow = float_wnd_create(560, 80, 1, true)
-	float_wnd_set_title(vatsimbriefHelperControlWindow, "Vatsimbrief Helper Control")
-	float_wnd_set_imgui_builder(vatsimbriefHelperControlWindow, "buildVatsimbriefHelperControlWindowCanvas")
-	float_wnd_set_onclose(vatsimbriefHelperControlWindow, "destroyVatsimbriefHelperWindow")
+  if vatsimbriefHelperControlWindow == nil then -- "Singleton window"
+    vatsimbriefHelperControlWindow = float_wnd_create(560, 80, 1, true)
+    float_wnd_set_title(vatsimbriefHelperControlWindow, "Vatsimbrief Helper Control")
+    float_wnd_set_imgui_builder(vatsimbriefHelperControlWindow, "buildVatsimbriefHelperControlWindowCanvas")
+    float_wnd_set_onclose(vatsimbriefHelperControlWindow, "destroyVatsimbriefHelperWindow")
+  end
 end
 
 add_macro("Vatsimbrief Helper Control", "createVatsimbriefHelperControlWindow()", "destroyVatsimbriefHelperControlWindow()", "deactivate")
@@ -909,25 +934,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
   local flightplanFetchStatusChanged = AtcWindowLastRenderedSimbriefFlightplanFetchStatus ~= CurrentSimbriefFlightplanFetchStatus
   local vatsimDataFetchStatusChanged = AtcWindowLastRenderedVatsimDataFetchStatus ~= CurrentVatsimDataFetchStatus
   local renderContent = flightplanChanged or atcIdentifiersUpdated or flightplanFetchStatusChanged or vatsimDataFetchStatusChanged or not AtcWindowHasRenderedContent
-  if renderContent then
-    -- Render route
-    if stringIsNotEmpty(FlightplanId) then
-      -- If there's a flightplan, render it
-      if stringIsNotEmpty(FlightplanAltIcao) then
-        Route = FlightplanCallsign .. ":  " .. FlightplanOriginIcao .. " - " .. FlightplanDestIcao .. " / " .. FlightplanAltIcao
-          .. " (" .. FlightplanOriginName .. " to " .. FlightplanDestName .. " / " .. FlightplanAltName .. ")"
-      else
-        Route = FlightplanCallsign .. ":  " .. FlightplanOriginIcao .. " - " .. FlightplanDestIcao
-          .. " (" .. FlightplanOriginName .. " to " .. FlightplanDestName .. ")"
-      end
-    else
-      -- It's more beautiful to show the "downloading" status in the title where the route appears in a few seconds
-      if CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.DOWNLOADING then
-        Route = "Downloading flightplan ..."
-      end
-    end
-    RouteSeparatorLine = string.rep("-", #Route)
-    
+  if renderContent then    
     -- Render download status of flightplan
     local statusType = CurrentSimbriefFlightplanFetchStatus.level
     if statusType == SimbriefFlightplanFetchStatusLevel.USER_RELATED or statusType == SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED then
@@ -946,9 +953,30 @@ function buildVatsimbriefHelperAtcWindowCanvas()
       AtcWindowVatsimDataDownloadStatusColor = colorNormal
     end
     
+    -- Render route
+    if stringIsNotEmpty(FlightplanId) then
+      -- If there's a flightplan, render it
+      if stringIsNotEmpty(FlightplanAltIcao) then
+        Route = FlightplanCallsign .. ":  " .. FlightplanOriginIcao .. " - " .. FlightplanDestIcao .. " / " .. FlightplanAltIcao
+          .. " (" .. FlightplanOriginName .. " to " .. FlightplanDestName .. " / " .. FlightplanAltName .. ")"
+      else
+        Route = FlightplanCallsign .. ":  " .. FlightplanOriginIcao .. " - " .. FlightplanDestIcao
+          .. " (" .. FlightplanOriginName .. " to " .. FlightplanDestName .. ")"
+      end
+    else
+      -- It's more beautiful to show the "downloading" status in the title where the route appears in a few seconds
+      if CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.DOWNLOADING then
+        Route = "Downloading flightplan ..."
+      else
+        Route = '' -- Clear previous state, e.g. don't show "downloading" when there's already an error
+      end
+    end
+    RouteSeparatorLine = string.rep("-", #Route)
+    
+    -- Try to render ATC data
     if numberIsNilOrZero(AtcIdentifiersUpdatedTimestamp) then
       Atcs = ''
-      -- Only show "downloading" message when there is no VATSIM data yet
+      -- Only show "downloading" message when there is no VATSIM data yet and no other download status is rendered
       showVatsimDataIsDownloading = CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.DOWNLOADING
     else
       showVatsimDataIsDownloading = false
@@ -1033,6 +1061,3 @@ add_macro("Vatsimbrief Helper ATC", "createVatsimbriefHelperAtcWindow()", "destr
 -- Initially open some windows
 createVatsimbriefHelperAtcWindow()
 createVatsimbriefHelperFlightplanWindow()
-if not userHasEnteredHisSimbriefUsername() then
-  createVatsimbriefHelperControlWindow()
-end
