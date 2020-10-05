@@ -767,74 +767,20 @@ function destroyVatsimbriefHelperFlightplanWindow()
 end
 
 function createVatsimbriefHelperFlightplanWindow()
+  print("creating flightplan window 1")
   tryVatsimbriefHelperInit()
-	vatsimbriefHelperControlWindow = float_wnd_create(800, 200, 1, true)
-	float_wnd_set_title(vatsimbriefHelperControlWindow, "Vatsimbrief Helper Flight Plan")
-	float_wnd_set_imgui_builder(vatsimbriefHelperControlWindow, "buildVatsimbriefHelperFlightplanWindowCanvas")
-	float_wnd_set_onclose(vatsimbriefHelperControlWindow, "destroyVatsimbriefHelperFlightplanWindow")
+  print("creating flightplan window 2")
+	vatsimbriefHelperFlightplanWindow = float_wnd_create(800, 200, 1, true)
+  print("creating flightplan window 3")
+	float_wnd_set_title(vatsimbriefHelperFlightplanWindow, "Vatsimbrief Helper Flight Plan")
+  print("creating flightplan window 4")
+	float_wnd_set_imgui_builder(vatsimbriefHelperFlightplanWindow, "buildVatsimbriefHelperFlightplanWindowCanvas")
+  print("creating flightplan window 5")
+	float_wnd_set_onclose(vatsimbriefHelperFlightplanWindow, "destroyVatsimbriefHelperFlightplanWindow")
+  print("creating flightplan window 6")
 end
 
-add_macro("Vatsimbrief Helper Flight Plan", "createVatsimbriefHelperFlightplanWindow()", "destroyVatsimbriefHelperFlightplanWindow()", "deactivate")
-
---
--- Control UI handling
---
-
-local inputUserName = ""
-
-function buildVatsimbriefHelperControlWindowCanvas()
-	imgui.SetWindowFontScale(1.0)
-  
-  local userNameInvalid = CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.INVALID_USER_NAME or CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NO_SIMBRIEF_USER_ID_ENTERED
-  if userNameInvalid then
-    imgui.PushStyleColor(imgui.constant.Col.Text, colorErr)
-  end
-  local changeFlag, newUserName = imgui.InputText("Simbrief Username", inputUserName, 255)
-  if userNameInvalid then
-    imgui.PopStyleColor()
-  end
-  if changeFlag then inputUserName = newUserName end
-  imgui.SameLine()
-  if imgui.Button("Set") then
-    if VatsimbriefConfiguration.simbrief == nil then VatsimbriefConfiguration.simbrief = {} end
-    VatsimbriefConfiguration.simbrief.username = trim(inputUserName)
-    saveConfiguration()
-    clearFlightplan()
-    refreshFlightplanNow()
-    inputUserName = '' -- Clear input line to keep user anonymous (in case he's streaming)
-  end
-  
-  if imgui.Button("Reload Flight Plan") then
-    clearFlightplan()
-    refreshFlightplanNow()
-  end
-  imgui.SameLine()
-  if imgui.Button("Reload ATC") then
-    clearAtcData()
-    refreshVatsimDataNow()
-  end
-end
-
-local vatsimbriefHelperControlWindow = nil
-
-function destroyVatsimbriefHelperControlWindow()
-	if vatsimbriefHelperControlWindow then
-		float_wnd_destroy(vatsimbriefHelperControlWindow)
-    vatsimbriefHelperControlWindow = nil
-	end
-end
-
-function createVatsimbriefHelperControlWindow()
-  tryVatsimbriefHelperInit()
-  if vatsimbriefHelperControlWindow == nil then -- "Singleton window"
-    vatsimbriefHelperControlWindow = float_wnd_create(560, 80, 1, true)
-    float_wnd_set_title(vatsimbriefHelperControlWindow, "Vatsimbrief Helper Control")
-    float_wnd_set_imgui_builder(vatsimbriefHelperControlWindow, "buildVatsimbriefHelperControlWindowCanvas")
-    float_wnd_set_onclose(vatsimbriefHelperControlWindow, "destroyVatsimbriefHelperControlWindow")
-  end
-end
-
-add_macro("Vatsimbrief Helper Control", "createVatsimbriefHelperControlWindow()", "destroyVatsimbriefHelperControlWindow()", "deactivate")
+add_macro("Vatsimbrief Helper Flight Plan", "createVatsimbriefHelperFlightplanWindow()", "destroyVatsimbriefHelperFlightplanWindow()", "activate")
 
 --
 -- ATC UI handling
@@ -879,6 +825,8 @@ local function renderAtcString(info)
   
   return shortId .. '=' .. info.frequency
 end
+
+do_sometimes("updateAtcWindowTitle()")
 
 local function renderAirportAtcToString(airportIcao, airportIata)
   local atis = {}
@@ -1041,6 +989,12 @@ end
 
 local vatsimbriefHelperAtcWindow = nil
 
+function updateAtcWindowTitle()
+  if vatsimbriefHelperAtcWindow ~= nil then
+    float_wnd_set_title(vatsimbriefHelperAtcWindow, "Vatsimbrief Helper ATC")
+  end
+end
+
 function destroyVatsimbriefHelperAtcWindow()
 	if vatsimbriefHelperAtcWindow then
 		float_wnd_destroy(vatsimbriefHelperAtcWindow)
@@ -1051,13 +1005,69 @@ end
 function createVatsimbriefHelperAtcWindow()
   tryVatsimbriefHelperInit()
 	vatsimbriefHelperAtcWindow = float_wnd_create(560, 90, 1, true)
-	float_wnd_set_title(vatsimbriefHelperAtcWindow, "Vatsimbrief Helper ATC")
+	updateAtcWindowTitle()
 	float_wnd_set_imgui_builder(vatsimbriefHelperAtcWindow, "buildVatsimbriefHelperAtcWindowCanvas")
 	float_wnd_set_onclose(vatsimbriefHelperAtcWindow, "destroyVatsimbriefHelperAtcWindow")
 end
 
-add_macro("Vatsimbrief Helper ATC", "createVatsimbriefHelperAtcWindow()", "destroyVatsimbriefHelperAtcWindow()", "deactivate")
+add_macro("Vatsimbrief Helper ATC", "createVatsimbriefHelperAtcWindow()", "destroyVatsimbriefHelperAtcWindow()", "activate")
 
--- Initially open some windows
-createVatsimbriefHelperAtcWindow()
-createVatsimbriefHelperFlightplanWindow()
+--
+-- Control UI handling
+--
+
+local inputUserName = ""
+
+function buildVatsimbriefHelperControlWindowCanvas()
+	imgui.SetWindowFontScale(1.6)
+  
+  local userNameInvalid = CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.INVALID_USER_NAME or CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NO_SIMBRIEF_USER_ID_ENTERED
+  if userNameInvalid then
+    imgui.PushStyleColor(imgui.constant.Col.Text, colorErr)
+  end
+  local changeFlag, newUserName = imgui.InputText("Simbrief Username", inputUserName, 255)
+  if userNameInvalid then
+    imgui.PopStyleColor()
+  end
+  if changeFlag then inputUserName = newUserName end
+  imgui.SameLine()
+  if imgui.Button("Set") then
+    if VatsimbriefConfiguration.simbrief == nil then VatsimbriefConfiguration.simbrief = {} end
+    VatsimbriefConfiguration.simbrief.username = trim(inputUserName)
+    saveConfiguration()
+    clearFlightplan()
+    refreshFlightplanNow()
+    inputUserName = '' -- Clear input line to keep user anonymous (in case he's streaming)
+  end
+  
+  if imgui.Button("Reload Flight Plan") then
+    clearFlightplan()
+    refreshFlightplanNow()
+  end
+  imgui.SameLine()
+  if imgui.Button("Reload ATC") then
+    clearAtcData()
+    refreshVatsimDataNow()
+  end
+end
+
+local vatsimbriefHelperControlWindow = nil
+
+function destroyVatsimbriefHelperControlWindow()
+	if vatsimbriefHelperControlWindow then
+		float_wnd_destroy(vatsimbriefHelperControlWindow)
+    vatsimbriefHelperControlWindow = nil
+	end
+end
+
+function createVatsimbriefHelperControlWindow()
+  tryVatsimbriefHelperInit()
+  if vatsimbriefHelperControlWindow == nil then -- "Singleton window"
+    vatsimbriefHelperControlWindow = float_wnd_create(900, 80, 1, true)
+    float_wnd_set_title(vatsimbriefHelperControlWindow, "Vatsimbrief Helper Control")
+    float_wnd_set_imgui_builder(vatsimbriefHelperControlWindow, "buildVatsimbriefHelperControlWindowCanvas")
+    float_wnd_set_onclose(vatsimbriefHelperControlWindow, "destroyVatsimbriefHelperControlWindow")
+  end
+end
+
+add_macro("Vatsimbrief Helper Control", "createVatsimbriefHelperControlWindow()", "destroyVatsimbriefHelperControlWindow()", "deactivate")
