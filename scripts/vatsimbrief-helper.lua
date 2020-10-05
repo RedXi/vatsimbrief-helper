@@ -830,7 +830,7 @@ function createVatsimbriefHelperControlWindow()
     vatsimbriefHelperControlWindow = float_wnd_create(560, 80, 1, true)
     float_wnd_set_title(vatsimbriefHelperControlWindow, "Vatsimbrief Helper Control")
     float_wnd_set_imgui_builder(vatsimbriefHelperControlWindow, "buildVatsimbriefHelperControlWindowCanvas")
-    float_wnd_set_onclose(vatsimbriefHelperControlWindow, "destroyVatsimbriefHelperWindow")
+    float_wnd_set_onclose(vatsimbriefHelperControlWindow, "destroyVatsimbriefHelperControlWindow")
   end
 end
 
@@ -1053,7 +1053,7 @@ function createVatsimbriefHelperAtcWindow()
 	vatsimbriefHelperAtcWindow = float_wnd_create(560, 90, 1, true)
 	float_wnd_set_title(vatsimbriefHelperAtcWindow, "Vatsimbrief Helper ATC")
 	float_wnd_set_imgui_builder(vatsimbriefHelperAtcWindow, "buildVatsimbriefHelperAtcWindowCanvas")
-	float_wnd_set_onclose(vatsimbriefHelperAtcWindow, "destroyVatsimbriefHelperWindow")
+	float_wnd_set_onclose(vatsimbriefHelperAtcWindow, "destroyVatsimbriefHelperAtcWindow")
 end
 
 add_macro("Vatsimbrief Helper ATC", "createVatsimbriefHelperAtcWindow()", "destroyVatsimbriefHelperAtcWindow()", "deactivate")
