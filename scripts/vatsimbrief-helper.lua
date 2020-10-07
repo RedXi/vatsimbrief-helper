@@ -97,7 +97,7 @@ local licensesOfDependencies = {
 }
 
 for i = 1, #licensesOfDependencies do
-  print(("Vatsimbrief Helper using '%s' with license '%s'. Project homepage: %s")
+  logMsg(("Vatsimbrief Helper using '%s' with license '%s'. Project homepage: %s")
     :format(licensesOfDependencies[i][1], licensesOfDependencies[i][2], licensesOfDependencies[i][3]))
 end
 
@@ -124,9 +124,9 @@ end
 local function loadConfiguration()
   if fileExists(ConfigurationFilePath) then
     VatsimbriefConfiguration = LIP.load(ConfigurationFilePath);
-    print(("Vatsimbrief configuration file '%s' loaded."):format(ConfigurationFilePath))
+    logMsg(("Vatsimbrief configuration file '%s' loaded."):format(ConfigurationFilePath))
   else
-    print(("Vatsimbrief configuration file '%s' missing! Running without configuration settings.")
+    logMsg(("Vatsimbrief configuration file '%s' missing! Running without configuration settings.")
       :format(ConfigurationFilePath))
   end
 end
@@ -231,16 +231,16 @@ local HttpDownloadErrors = {
 local function performDefaultHttpGetRequest(url, resultCallback, errorCallback, userData, isRedirectedRequest)
   local t0 = os.clock()
   
-  print(("Requesting URL '%s' at time '%s'"):format(url, os.date("%X")))
+  logMsg(("Requesting URL '%s' at time '%s'"):format(url, os.date("%X")))
   local content, code, headers, status = http.request(url)
-  print(("Request to URL '%s' finished"):format(url))
+  logMsg(("Request to URL '%s' finished"):format(url))
 
   if type(content) ~= "string" or type(code) ~= "number" or
       type(headers) ~= "table" or type(status) ~= "string" then
-    print(("Request URL: %s, FAILURE: Status = %s, code = %s"):format(url, status, code))
+    logMsg(("Request URL: %s, FAILURE: Status = %s, code = %s"):format(url, status, code))
     errorCallback({ errorCode = HttpDownloadErrors.NETWORK, userData = userData })
   else
-    print(("Request URL: %s, duration: %.2fs, response status: %s, response length: %d bytes")
+    logMsg(("Request URL: %s, duration: %.2fs, response status: %s, response length: %d bytes")
       :format(url, os.clock() - t0, status, #content))
     
     --[[ We tried to enable the library for HTTP redirects this way. However, we don't get out of http.request() w/o error:
@@ -346,7 +346,7 @@ end
 function processFlightPlanFileDownloadSuccess(httpRequest)
   local typeName = httpRequest.userData.typeName
   if httpRequest.userData.flightPlanId ~= FlightplanDownloadFilesForFlightplanId then
-    print("Discarding downloaded file of type '" .. httpRequest.userData.typeName .. "' for flight plan '" .. httpRequest.userData.flightPlanId .. "' as there's a new flight plan")
+    logMsg("Discarding downloaded file of type '" .. httpRequest.userData.typeName .. "' for flight plan '" .. httpRequest.userData.flightPlanId .. "' as there's a new flight plan")
   else
     local targetFileName = FlightplanDownloadDirectory .. httpRequest.userData.targetFileName
     local f = io.open(targetFileName, "w")
@@ -359,7 +359,7 @@ function processFlightPlanFileDownloadSuccess(httpRequest)
     FlightplanDownloadMapTypeToDownloadedFileName[typeName] = targetFileName
     FlightplanDownloadSetOfDownloadingTypes[typeName] = false
     
-    print(("Download of file of type '%s' to '%s' for flight plan '%s' succeeded after '%.03fs'"):format(
+    logMsg(("Download of file of type '%s' to '%s' for flight plan '%s' succeeded after '%.03fs'"):format(
       typeName, targetFileName, httpRequest.userData.flightPlanId, os.clock() - FlightplanDownloadMapTypeToAttemptTimestamp[typeName]))
   end
 end
@@ -367,9 +367,9 @@ end
 function processFlightPlanFileDownloadFailure(httpRequest)
   local typeName = httpRequest.userData.typeName
   if httpRequest.userData.flightPlanId ~= FlightplanDownloadFilesForFlightplanId then
-    print("Discarding failure for download of file of type '" .. typeName .. "' for flight plan '" .. httpRequest.userData.flightPlanId .. "'")
+    logMsg("Discarding failure for download of file of type '" .. typeName .. "' for flight plan '" .. httpRequest.userData.flightPlanId .. "'")
   else
-    print(("Download of file of type '%s' for flight plan '%s' FAILED after '%.03fs' -- reattempting after '%.fs'"):format(
+    logMsg(("Download of file of type '%s' for flight plan '%s' FAILED after '%.03fs' -- reattempting after '%.fs'"):format(
       typeName, httpRequest.userData.flightPlanId, os.clock() - FlightplanDownloadMapTypeToAttemptTimestamp[typeName], FlightplanDownloadRetryAfterSecs))
     FlightplanDownloadSetOfDownloadingTypes[typeName] = false
   end
@@ -389,7 +389,7 @@ function downloadFlightplans()
               FlightplanDownloadSetOfDownloadingTypes[typeName] = true -- Set immediately to prevent race conditions leading to multiple downloads launching. However, always remember to turn it off!
               local url = FlightplanDownloadFilesBaseUrl .. "-" .. FlightplanDownloadFileTypesAndNames[typeName]
               local targetFileName = FlightplanDownloadLocalFilesName .. "_" .. typeName .. getExtensionOfFileName(FlightplanDownloadFileTypesAndNames[typeName])
-              print(("Download of file of type '%s' for flight plan '%s' starting"):format(typeName, FlightplanDownloadFilesForFlightplanId))
+              logMsg(("Download of file of type '%s' for flight plan '%s' starting"):format(typeName, FlightplanDownloadFilesForFlightplanId))
               -- We observed that the official URL redirects
               --  from www.simbrief.com/ofp/flightplans/<TypeName>
               -- to
@@ -707,7 +707,7 @@ local function processNewFlightplan(httpRequest)
         runFlightPlanDownloadForNewFlightPlan(FlightplanId, filesDirectory, fileTypesAndNames, downloadedFlightPlansFileName)
       end
     else
-      print("Flight plan states that it's not valid. Reported status: " .. simbriefFlightplanXmlHandler.root.OFP.fetch.status)
+      logMsg("Flight plan states that it's not valid. Reported status: " .. simbriefFlightplanXmlHandler.root.OFP.fetch.status)
       
       -- As of 10/2020, original message is <status>Error: Unknown UserID</status>
       if httpRequest.httpStatusCode == 400 and simbriefFlightplanXmlHandler.root.OFP.fetch.status:lower():find('unknown userid') then
@@ -735,7 +735,7 @@ local function refreshFlightplanNow()
       local url = "http://www.simbrief.com/api/xml.fetcher.php?username=" .. getConfiguredSimbriefUserName()
       performDefaultHttpGetRequest(url, processNewFlightplan, processFlightplanDownloadFailure)
     else
-      print("Not fetching flight plan. No simbrief username configured.")
+      logMsg("Not fetching flight plan. No simbrief username configured.")
       CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NO_SIMBRIEF_USER_ID_ENTERED
       
       -- Display configuration window if there's something wrong with the user name
