@@ -47,8 +47,31 @@ local function numberIsNotNilOrZero(n)
   return not numberIsNilOrZero(n)
 end
 
-function trim(s)
+local function trim(s)
    return s:gsub("^%s*(.-)%s*$", "%1")
+end
+
+local function stringEndsWith(s, e)
+  return stringIsEmpty(e) or s:sub(-#e) == e
+end
+
+local OsType = { WINDOWS, UNIX_LIKE }
+local OS
+if package.config:sub(1, 1) == '/' then OS = OsType.UNIX_LIKE else OS = OsType.WINDOWS end
+
+local PATH_DELIMITER = package.config:sub(1, 1)
+local function formatPathOsSpecific(path)
+  local pathDelimiter = PATH_DELIMITER
+  return path:gsub("[\\/]", pathDelimiter)
+end
+
+local function getExtensionOfFileName(s)
+  local firstDot = s:find("%.")
+  if firstDot ~= nil then
+    return s:sub(firstDot)
+  else
+    return ''
+  end
 end
 
 -- Color schema
@@ -112,6 +135,59 @@ local function saveConfiguration()
   LIP.save(ConfigurationFilePath, VatsimbriefConfiguration);
 end
 
+local function getConfiguredSimbriefUserName()
+  if VatsimbriefConfiguration.simbrief ~= nil and stringIsNotEmpty(VatsimbriefConfiguration.simbrief.username) then
+    return trim(VatsimbriefConfiguration.simbrief.username)
+  else
+    return ''
+  end
+end
+
+local function setConfiguredUserName(value)
+  if VatsimbriefConfiguration.simbrief == nil then VatsimbriefConfiguration.simbrief = {} end
+  VatsimbriefConfiguration.simbrief.username = trim(value)
+end
+
+local function getConfiguredFlightPlanFilesForDownloadAsList()
+  local result = {}
+  if VatsimbriefConfiguration.simbrief ~= nil then
+    local i = 1
+    while true do
+      local nextItem = VatsimbriefConfiguration.simbrief['flightPlanTypesForDownload' .. i]
+      if nextItem == nil then break end
+      table.insert(result, nextItem)
+      i = i + 1
+    end
+  end
+  return result
+end
+
+local function setConfiguredFlightPlanFilesForDownloadAsList(value)
+  if VatsimbriefConfiguration.simbrief == nil then VatsimbriefConfiguration.simbrief = {} end
+  for i = 1, #value do VatsimbriefConfiguration.simbrief['flightPlanTypesForDownload' .. i] = value[i] end
+end
+
+local function setConfiguredDeleteOldFlightPlansSetting(value)
+  if VatsimbriefConfiguration.simbrief == nil then VatsimbriefConfiguration.simbrief = {} end
+  local strValue
+  if value then strValue = 'yes' else strValue = 'no' end
+  VatsimbriefConfiguration.simbrief.deleteDownloadedFlightPlans = strValue
+end
+
+local function getConfiguredDeleteOldFlightPlansSetting()
+  -- Unless it's clearly a YES, do NOT return to delete anything! Also in case the removal crashes on the system. We don't want that.
+  
+  if VatsimbriefConfiguration.simbrief == nil then VatsimbriefConfiguration.simbrief = {} end
+  if VatsimbriefConfiguration.simbrief.deleteDownloadedFlightPlans == nil then
+    return false
+  end
+  if trim(VatsimbriefConfiguration.simbrief.deleteDownloadedFlightPlans) == 'yes' then
+    return true
+  else
+    return false
+  end
+end
+
 loadConfiguration() -- Initially load configuration synchronously so it's present below this line
 
 --
@@ -148,32 +224,251 @@ local http = require("copas.http")
 
 local HttpDownloadErrors = {
   NETWORK = 1,
-  INTERNAL_SERVER_ERROR = 2
+  INTERNAL_SERVER_ERROR = 2,
+  UNHANDLED_RESPONSE = 3
 }
 
-local function performDefaultHttpGetRequest(url, resultCallback, errorCallback)
+local function performDefaultHttpGetRequest(url, resultCallback, errorCallback, userData, isRedirectedRequest)
   local t0 = os.clock()
   
+  print(("Requesting URL '%s' at time '%s'"):format(url, os.date("%X")))
   local content, code, headers, status = http.request(url)
+  print(("Request to URL '%s' finished"):format(url))
 
   if type(content) ~= "string" or type(code) ~= "number" or
       type(headers) ~= "table" or type(status) ~= "string" then
-    print(("Request URL: %s, FAILURE"):format(url))
-    errorCallback({ errorCode = HttpDownloadErrors.NETWORK })
+    print(("Request URL: %s, FAILURE: Status = %s, code = %s"):format(url, status, code))
+    errorCallback({ errorCode = HttpDownloadErrors.NETWORK, userData = userData })
   else
     print(("Request URL: %s, duration: %.2fs, response status: %s, response length: %d bytes")
       :format(url, os.clock() - t0, status, #content))
+    
+    --[[ We tried to enable the library for HTTP redirects this way. However, we don't get out of http.request() w/o error:
+      Request URL: http://www.simbrief.com/ofp/flightplans/EDDNEDDL_WAE_1601924120.rte, FAILURE: Status = nil, code = host or service not provided, or not known
+      
+    if status == 301 then -- Moved permanently
+      local to = headers.location
+      if to == nil then
+        errorCallback({ errorCode = HttpDownloadErrors.UNHANDLED_RESPONSE, userData = userData })
+      else
+        if isRedirectedRequest then
+          logMsg("Only attempting to redirect ONCE. Received second redirect, this time to '" .. to .. "'")
+          errorCallback({ errorCode = HttpDownloadErrors.UNHANDLED_RESPONSE, userData = userData })
+        else
+          logMsg("Redirecting: '" .. url .. "' to '" .. to .. "'")
+          performDefaultHttpGetRequest(to, resultCallback, errorCallback, userData, true)
+        end
+      end
+    end
+    ]]--
   
     if code < 500 then
-      table.insert(SyncTasksAfterAsyncTasks, { callback = resultCallback, params = { httpResponse = content, httpStatusCode = code } })
+      table.insert(SyncTasksAfterAsyncTasks, { callback = resultCallback, params = { responseBody = content, httpStatusCode = code, userData = userData } })
     else
-      errorCallback({ errorCode = HttpDownloadErrors.INTERNAL_SERVER_ERROR })
+      errorCallback({ errorCode = HttpDownloadErrors.INTERNAL_SERVER_ERROR, userData = userData })
     end
   end
 end
 
 --
--- Simbrief flightplan
+-- Download of Simbrief flight plans
+--
+
+-- Constants
+local FlightplanDownloadDirectory = formatPathOsSpecific(SCRIPT_DIRECTORY .. "flight-plans" .. PATH_DELIMITER)
+local FlightplanDownloadRetryAfterSecs = 120.0 -- MUST be float to pass printf("%f", this)
+-- Config from flightplan
+local FlightplanDownloadFilesForFlightplanId = ''
+local FlightplanDownloadFilesBaseUrl = '' -- Base URL for download, e.g. "http://www.simbrief.com/ofp/flightplans/"
+local FlightplanDownloadFileTypes = {} -- Ordered array of types
+local FlightplanDownloadFileTypesAndNames = {} -- Hash: Type to file name on server
+local FlightplanDownloadLocalFilesName = ''
+-- User config
+local FlightplanDownloadConfig = {} -- FileType to "true" (enable download) or "false" (disable download)
+local tmp = getConfiguredFlightPlanFilesForDownloadAsList()
+for i = 1, #tmp do FlightplanDownloadConfig[tmp[i]] = true end
+-- Download state
+local FlightplanDownloadMapTypeToDownloadedFileName = {} -- When download complete
+local FlightplanDownloadSetOfDownloadingTypes = {} -- When currently downloading, type name maps to "something"
+local FlightplanDownloadMapTypeToAttemptTimestamp = {} -- Type name maps to timestamp of last attempt
+
+function scanDirectoryForFilesOnUnixLikeOs(directory)
+  if direcory:find("'") ~= nil then return nil end -- It's stated that the procedure does not work in this case
+  local t = {}
+  local pfile = assert(io.popen(("find '%s' -maxdepth 1 -print0 -type f"):format(directory), 'r'))
+  local list = pfile:read('*a')
+  pfile:close()
+  for f in s:gmatch('[^\0]+') do table.insert(t, f) end
+  return t
+end
+
+function scanDirectoryForFilesOnWindowsOs(directory)
+  local t = {}
+  for f in io.popen([[dir "]] .. directory .. [[" /b]]):lines() do table.insert(t, f) end
+  return t
+end
+
+local function listDownloadedFlightPlans()
+  local filenames
+  if OS == OsType.WINDOWS then
+    filenames = scanDirectoryForFilesOnWindowsOs(FlightplanDownloadDirectory)
+  else -- OsType.UNIX_LIKE
+    filenames = scanDirectoryForFilesOnUnixLikeOs(FlightplanDownloadDirectory)
+  end
+  if filenames == nil then return nil end
+  for i = 1, #filenames do filenames[i] = FlightplanDownloadDirectory .. filenames[i] end
+  return filenames
+end
+
+local function deleteDownloadedFlightPlansIfConfigured()
+  if getConfiguredDeleteOldFlightPlansSetting() then
+    local fileNames = listDownloadedFlightPlans()
+    if fileNames == nil then
+      logMsg("Failed to list flight plan files.")
+    else
+      logMsg("Attempting to delete " .. #fileNames .. " recent flight plan files")
+      
+      -- The listDirectory() implementation is very sloppy. In case it fails, disable
+      -- the flight plan removal such that we don't crash again next time we're launched.
+      setConfiguredDeleteOldFlightPlansSetting(false)
+      saveConfiguration()
+      
+      for i = 1, #fileNames do
+        os.remove(fileNames[i])
+      end
+      
+      setConfiguredDeleteOldFlightPlansSetting(true)
+      saveConfiguration()
+    end
+  end
+end
+
+function processFlightPlanFileDownloadSuccess(httpRequest)
+  local typeName = httpRequest.userData.typeName
+  if httpRequest.userData.flightPlanId ~= FlightplanDownloadFilesForFlightplanId then
+    print("Discarding downloaded file of type '" .. httpRequest.userData.typeName .. "' for flight plan '" .. httpRequest.userData.flightPlanId .. "' as there's a new flight plan")
+  else
+    local targetFileName = FlightplanDownloadDirectory .. httpRequest.userData.targetFileName
+    local f = io.open(targetFileName, "w")
+    if io.type(f) ~= 'file' then
+      logMsg("Failed to write data to file path: " .. targetFileName)
+    else
+      f:write(httpRequest.responseBody)
+      f:close()
+    end
+    FlightplanDownloadMapTypeToDownloadedFileName[typeName] = targetFileName
+    FlightplanDownloadSetOfDownloadingTypes[typeName] = false
+    
+    print(("Download of file of type '%s' to '%s' for flight plan '%s' succeeded after '%.03fs'"):format(
+      typeName, targetFileName, httpRequest.userData.flightPlanId, os.clock() - FlightplanDownloadMapTypeToAttemptTimestamp[typeName]))
+  end
+end
+
+function processFlightPlanFileDownloadFailure(httpRequest)
+  local typeName = httpRequest.userData.typeName
+  if httpRequest.userData.flightPlanId ~= FlightplanDownloadFilesForFlightplanId then
+    print("Discarding failure for download of file of type '" .. typeName .. "' for flight plan '" .. httpRequest.userData.flightPlanId .. "'")
+  else
+    print(("Download of file of type '%s' for flight plan '%s' FAILED after '%.03fs' -- reattempting after '%.fs'"):format(
+      typeName, httpRequest.userData.flightPlanId, os.clock() - FlightplanDownloadMapTypeToAttemptTimestamp[typeName], FlightplanDownloadRetryAfterSecs))
+    FlightplanDownloadSetOfDownloadingTypes[typeName] = false
+  end
+end
+
+function downloadFlightplans()
+  local now = os.clock()
+  if FlightplanDownloadFilesForFlightplanId ~= nil then -- If there's a flightplan
+    for i = 1, #FlightplanDownloadFileTypes do -- For all types
+      local typeName = FlightplanDownloadFileTypes[i]
+      if FlightplanDownloadMapTypeToDownloadedFileName[types] == nil then -- Not downloaded yet
+        if FlightplanDownloadConfig[typeName] == true then -- And download enabled by config
+          if FlightplanDownloadSetOfDownloadingTypes[typeName] ~= true then -- And download not already running
+            if FlightplanDownloadMapTypeToAttemptTimestamp[typeName] == nil -- And download was not attempted yet ...
+              or FlightplanDownloadMapTypeToAttemptTimestamp[typeName] < now - FlightplanDownloadRetryAfterSecs then -- ... or needs to be retried
+              FlightplanDownloadMapTypeToAttemptTimestamp[typeName] = now -- Save attempt timestamp for retrying later
+              FlightplanDownloadSetOfDownloadingTypes[typeName] = true -- Set immediately to prevent race conditions leading to multiple downloads launching. However, always remember to turn it off!
+              local url = FlightplanDownloadFilesBaseUrl .. "-" .. FlightplanDownloadFileTypesAndNames[typeName]
+              local targetFileName = FlightplanDownloadLocalFilesName .. "_" .. typeName .. getExtensionOfFileName(FlightplanDownloadFileTypesAndNames[typeName])
+              print(("Download of file of type '%s' for flight plan '%s' starting"):format(typeName, FlightplanDownloadFilesForFlightplanId))
+              -- We observed that the official URL redirects
+              --  from www.simbrief.com/ofp/flightplans/<TypeName>
+              -- to
+              --  http://www.simbrief.com/system/briefing.fmsdl.php?formatget=flightplans/<TypeName>
+              -- HTTP 301 Redirects are unfortunately not working with this library. :-(
+              -- Keep the final URL in hardcoded for now. Ouch.
+              if getExtensionOfFileName(FlightplanDownloadFileTypesAndNames[typeName]) ~= ".pdf" then
+                url = "http://www.simbrief.com/system/briefing.fmsdl.php?formatget=flightplans/" .. FlightplanDownloadFileTypesAndNames[typeName]
+              end
+              copas.addthread(function() -- Note that the HTTP call must run in a copas thread, otherwise it will throw errors (something's always nil)
+                performDefaultHttpGetRequest(url, processFlightPlanFileDownloadSuccess, processFlightPlanFileDownloadFailure,
+                  { typeName = typeName, flightPlanId = FlightplanDownloadFilesForFlightplanId, targetFileName = targetFileName })
+              end)
+            end
+          end
+        end
+      end
+    end
+  end
+end
+
+local function isFlightplanFileDownloadEnabled(typeName)
+  -- Note: Implement in at least O(log #TypeNames) as this method is called each frame during rendering of the configuration window
+  return FlightplanDownloadConfig[typeName] == true
+end
+
+local function setFlightplanFileDownloadEnabled(typeName, value)
+  if type(FlightplanDownloadConfig[typeName]) == 'boolean' then
+    local stringValue
+    if value then stringValue = 'true' else stringValue = 'false' end
+    logMsg(("Set flight plan file download for type '%s' to '%s'"):format(typeName, stringValue))
+    FlightplanDownloadConfig[typeName] = value
+  end
+end
+
+local function saveFlightPlanFilesForDownload()
+  local enabledFileTypes = {}
+  for fileType, downloadEnabled in pairs(FlightplanDownloadConfig) do
+    if downloadEnabled then table.insert(enabledFileTypes, fileType) end
+  end
+  setConfiguredFlightPlanFilesForDownloadAsList(enabledFileTypes)
+  saveConfiguration()
+end
+
+local function runFlightPlanDownloadForNewFlightPlan(flightPlanId, baseUrlForDownload, fileTypesAndNames, localFilesName)
+  -- Store flightplan specific download information
+  FlightplanDownloadFilesForFlightplanId = flightPlanId
+  FlightplanDownloadFilesBaseUrl = baseUrlForDownload
+  if not stringEndsWith(FlightplanDownloadFilesBaseUrl, '/') then FlightplanDownloadFilesBaseUrl = FlightplanDownloadFilesBaseUrl .. '/' end
+  FlightplanDownloadFileTypesAndNames = fileTypesAndNames
+  FlightplanDownloadFileTypes = {}
+  FlightplanDownloadLocalFilesName = localFilesName
+  for fileType, fileName in pairs(fileTypesAndNames) do table.insert(FlightplanDownloadFileTypes, fileType) end
+  
+  -- Update config: Add new types and remove those that are gone for some reason...
+  local configNew = {}
+  for fileType, fileName in pairs(fileTypesAndNames) do configNew[fileType] = isFlightplanFileDownloadEnabled(fileType) end
+  FlightplanDownloadConfig = configNew
+  
+  -- Invalidate old flightplans in memory
+  FlightplanDownloadMapTypeToDownloadedFileName = {}
+  FlightplanDownloadSetOfDownloadingTypes = {}
+  FlightplanDownloadMapTypeToAttemptTimestamp = {}
+  
+  -- Create target directory of downloaded flight plans
+  os.execute("mkdir " .. FlightplanDownloadDirectory)
+  
+  -- Invalidate old flightplans on disk
+  deleteDownloadedFlightPlansIfConfigured()
+end
+
+local function getFlightplanFileTypesArray()
+  return FlightplanDownloadFileTypes
+end
+
+do_sometimes("downloadFlightplans()")
+
+--
+-- Simbrief flight plans
 --
 
 local function removeLinebreaksFromString(s)
@@ -250,6 +545,7 @@ local SimbriefFlightplanFetchStatus = {
   NO_ERROR = { level = SimbriefFlightplanFetchStatusLevel.INFO },
   UNKNOWN_DOWNLOAD_ERROR = { level = SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED },
   UNEXPECTED_HTTP_RESPONSE_STATUS = { level = SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED },
+  UNEXPECTED_HTTP_RESPONSE = { level = SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED },
   NETWORK_ERROR = { level = SimbriefFlightplanFetchStatusLevel.SYSTEM_RELATED },
   INVALID_USER_NAME = { level = SimbriefFlightplanFetchStatusLevel.USER_RELATED },
   NO_FLIGHT_PLAN_CREATED = { level = SimbriefFlightplanFetchStatusLevel.USER_RELATED },
@@ -269,6 +565,8 @@ local function getSimbriefFlightplanFetchStatusMessageAndColor()
     msg = "Unknown error while downloading"
   elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS then
     msg = "Unexpected server response"
+  elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.UNEXPECTED_HTTP_RESPONSE then
+    msg = "Unhandled server response"
   elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NETWORK_ERROR then
     msg = "Network error"
   elseif CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.INVALID_USER_NAME then
@@ -298,19 +596,20 @@ local function getSimbriefFlightplanFetchStatusMessageAndColor()
   return msg, color
 end
 
-local function processFlightplanDownloadFailure(params)
-  if params.errorCode == HttpDownloadErrors.INTERNAL_SERVER_ERROR then CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
-  elseif params.errorCode == HttpDownloadErrors.NETWORK then CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NETWORK_ERROR
+local function processFlightplanDownloadFailure(httpRequest)
+  if httpRequest.errorCode == HttpDownloadErrors.INTERNAL_SERVER_ERROR then CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
+  elseif httpRequest.errorCode == HttpDownloadErrors.UNHANDLED_RESPONSE then CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.UNEXPECTED_HTTP_RESPONSE
+  elseif httpRequest.errorCode == HttpDownloadErrors.NETWORK then CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NETWORK_ERROR
   else CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.UNKNOWN_DOWNLOAD_ERROR end
 end
 
-local function processNewFlightplan(params)
-  if params.httpStatusCode ~= 200 and params.httpStatusCode ~= 400 then
+local function processNewFlightplan(httpRequest)
+  if httpRequest.httpStatusCode ~= 200 and httpRequest.httpStatusCode ~= 400 then
     CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
   else
     local parser = xml2lua.parser(simbriefFlightplanXmlHandler)
-    parser:parse(params.httpResponse)
-    if params.httpStatusCode == 200 and simbriefFlightplanXmlHandler.root.OFP.fetch.status == "Success" then
+    parser:parse(httpRequest.responseBody)
+    if httpRequest.httpStatusCode == 200 and simbriefFlightplanXmlHandler.root.OFP.fetch.status == "Success" then
       SimbriefFlightplan = simbriefFlightplanXmlHandler.root.OFP
       
       newFlightplanId = SimbriefFlightplan.params.request_id .. "|" .. SimbriefFlightplan.params.time_generated
@@ -394,13 +693,24 @@ local function processNewFlightplan(params)
         FlightplanAvgWindDir = tonumber(SimbriefFlightplan.general.avg_wind_dir)
         FlightplanAvgWindSpeed = tonumber(SimbriefFlightplan.general.avg_wind_spd)
         
+        local filesDirectory = SimbriefFlightplan.files.directory
+        local fileTypesAndNames = { [SimbriefFlightplan.files.pdf.name] = SimbriefFlightplan.files.pdf.link }
+        for i = 1, #SimbriefFlightplan.files.file do
+          local name = SimbriefFlightplan.files.file[i].name
+          local link = SimbriefFlightplan.files.file[i].link
+          fileTypesAndNames[name] = link
+        end
+        
         CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NO_ERROR
+        
+        downloadedFlightPlansFileName = ("%s_%s-%s"):format(os.date("%Y%m%d_%H%M%S"), FlightplanOriginIcao, FlightplanDestIcao)
+        runFlightPlanDownloadForNewFlightPlan(FlightplanId, filesDirectory, fileTypesAndNames, downloadedFlightPlansFileName)
       end
     else
       print("Flight plan states that it's not valid. Reported status: " .. simbriefFlightplanXmlHandler.root.OFP.fetch.status)
       
       -- As of 10/2020, original message is <status>Error: Unknown UserID</status>
-      if params.httpStatusCode == 400 and simbriefFlightplanXmlHandler.root.OFP.fetch.status:lower():find('unknown userid') then
+      if httpRequest.httpStatusCode == 400 and simbriefFlightplanXmlHandler.root.OFP.fetch.status:lower():find('unknown userid') then
         CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.INVALID_USER_NAME
       elseif simbriefFlightplanXmlHandler.root.OFP.fetch.status:lower():find('no flight plan') then
         CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NO_FLIGHT_PLAN_CREATED
@@ -418,15 +728,11 @@ local function clearFlightplan()
   FlightplanId = nil
 end
 
-local function userHasEnteredHisSimbriefUsername()
-  return VatsimbriefConfiguration.simbrief ~= nil and stringIsNotEmpty(VatsimbriefConfiguration.simbrief.username)
-end
-
 local function refreshFlightplanNow()
   copas.addthread(function()
     CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.DOWNLOADING
-    if userHasEnteredHisSimbriefUsername() then
-      local url = "http://www.simbrief.com/api/xml.fetcher.php?username=" .. VatsimbriefConfiguration.simbrief.username
+    if getConfiguredSimbriefUserName() ~= nil then
+      local url = "http://www.simbrief.com/api/xml.fetcher.php?username=" .. getConfiguredSimbriefUserName()
       performDefaultHttpGetRequest(url, processNewFlightplan, processFlightplanDownloadFailure)
     else
       print("Not fetching flight plan. No simbrief username configured.")
@@ -464,6 +770,7 @@ local VatsimDataFetchStatus = {
   NO_ERROR = { level = VatsimDataFetchStatusLevel.INFO },
   UNKNOWN_DOWNLOAD_ERROR = { level = VatsimDataFetchStatusLevel.SYSTEM_RELATED },
   UNEXPECTED_HTTP_RESPONSE_STATUS = { level = VatsimDataFetchStatusLevel.SYSTEM_RELATED },
+  UNEXPECTED_HTTP_RESPONSE = { level = VatsimDataFetchStatusLevel.SYSTEM_RELATED },
   NETWORK_ERROR = { level = VatsimDataFetchStatusLevel.SYSTEM_RELATED }
 }
 local CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.NO_DOWNLOAD_ATTEMPTED
@@ -479,6 +786,8 @@ local function getVatsimDataFetchStatusMessageAndColor()
     msg = "Unknown error while downloading"
   elseif CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS then
     msg = "Unexpected server response"
+  elseif CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE then
+    msg = "Unhandled server response"
   elseif CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.NETWORK_ERROR then
     msg = "Network error"
   else
@@ -528,18 +837,19 @@ local function splitStringBySeparator(str, separator)
   return result
 end
 
-local function processVatsimDataDownloadFailure(params)
-  if params.errorCode == HttpDownloadErrors.INTERNAL_SERVER_ERROR then CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
-  elseif params.errorCode == HttpDownloadErrors.NETWORK then CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.NETWORK_ERROR
+local function processVatsimDataDownloadFailure(httpRequest)
+  if httpRequest.errorCode == HttpDownloadErrors.INTERNAL_SERVER_ERROR then CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
+  elseif httpRequest.errorCode == HttpDownloadErrors.UNHANDLED_RESPONSE then CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE
+  elseif httpRequest.errorCode == HttpDownloadErrors.NETWORK then CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.NETWORK_ERROR
   else CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNKNOWN_DOWNLOAD_ERROR end
 end
 
-local function processNewVatsimData(params)
-  if params.httpStatusCode ~= 200 then
+local function processNewVatsimData(httpRequest)
+  if httpRequest.httpStatusCode ~= 200 then
     CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
   else
     MapAtcIdentifiersToAtcInfo = {}
-    local lines = splitStringBySeparator(params.httpResponse, "\n")
+    local lines = splitStringBySeparator(httpRequest.responseBody, "\n")
     for _, line in ipairs(lines) do
       -- Example line: SBWJ_APP:1030489:hamilton junior:ATC:119.000:-23.37825:-46.84175:0:0::::::SINGAPORE:100:4:0:5:159::::::::::::0:0:0:0:ATIS B 2200Z   ^Â§SBRJ VMC QNH 1007 DEP/ARR RWY 20LRNAV D/E^Â§SBGL VMC QNH 1008  DEP/ARR RWY 10 ILS X:20201002211135:20201002211135:0:0:0:
       
@@ -767,17 +1077,11 @@ function destroyVatsimbriefHelperFlightplanWindow()
 end
 
 function createVatsimbriefHelperFlightplanWindow()
-  print("creating flightplan window 1")
   tryVatsimbriefHelperInit()
-  print("creating flightplan window 2")
 	vatsimbriefHelperFlightplanWindow = float_wnd_create(800, 200, 1, true)
-  print("creating flightplan window 3")
 	float_wnd_set_title(vatsimbriefHelperFlightplanWindow, "Vatsimbrief Helper Flight Plan")
-  print("creating flightplan window 4")
 	float_wnd_set_imgui_builder(vatsimbriefHelperFlightplanWindow, "buildVatsimbriefHelperFlightplanWindowCanvas")
-  print("creating flightplan window 5")
 	float_wnd_set_onclose(vatsimbriefHelperFlightplanWindow, "destroyVatsimbriefHelperFlightplanWindow")
-  print("creating flightplan window 6")
 end
 
 add_macro("Vatsimbrief Helper Flight Plan", "createVatsimbriefHelperFlightplanWindow()", "destroyVatsimbriefHelperFlightplanWindow()", "activate")
@@ -802,10 +1106,6 @@ local AtcWindowLastRenderedVatsimDataFetchStatus = CurrentVatsimDataFlightplanFe
 local AtcWindowVatsimDataDownloadStatus = ''
 local AtcWindowVatsimDataDownloadStatusColor = 0
 local showVatsimDataIsDownloading = false
-
-local function stringEndsWith(str, ending)
-   return ending == "" or str:sub(-#ending) == ending
-end
 
 local function renderAtcString(info)
   local shortId
@@ -1017,37 +1317,95 @@ add_macro("Vatsimbrief Helper ATC", "createVatsimbriefHelperAtcWindow()", "destr
 --
 
 local inputUserName = ""
+local MENU_ITEM_OVERVIEW = 0
+local MENU_ITEM_FLIGHTPLAN_DOWNLOAD = 1
+local menuItem = MENU_ITEM_OVERVIEW
+
+local MainMenuOptions = {
+  ["General"] = MENU_ITEM_OVERVIEW,
+  ["Flightplan Download"] = MENU_ITEM_FLIGHTPLAN_DOWNLOAD
+}
 
 function buildVatsimbriefHelperControlWindowCanvas()
-	imgui.SetWindowFontScale(1.6)
+	imgui.SetWindowFontScale(1.5)
   
-  local userNameInvalid = CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.INVALID_USER_NAME or CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NO_SIMBRIEF_USER_ID_ENTERED
-  if userNameInvalid then
-    imgui.PushStyleColor(imgui.constant.Col.Text, colorErr)
+  -- Main menu
+  local currentMenuItem = menuItem -- We get into race conditions when not copying before changing
+  local i = 1
+  for label, id in pairs(MainMenuOptions) do
+    if i > 1 then imgui.SameLine() end
+    local isCurrentMenuItem = id == currentMenuItem
+    if isCurrentMenuItem then imgui.PushStyleColor(imgui.constant.Col.Button, 0xFFFA9642) end
+    imgui.PushID(i)
+    if imgui.Button(label) then
+      menuItem = id
+    end
+    imgui.PopID()
+    if isCurrentMenuItem then imgui.PopStyleColor() end
+    i = i + 1
   end
-  local changeFlag, newUserName = imgui.InputText("Simbrief Username", inputUserName, 255)
-  if userNameInvalid then
-    imgui.PopStyleColor()
-  end
-  if changeFlag then inputUserName = newUserName end
-  imgui.SameLine()
-  if imgui.Button("Set") then
-    if VatsimbriefConfiguration.simbrief == nil then VatsimbriefConfiguration.simbrief = {} end
-    VatsimbriefConfiguration.simbrief.username = trim(inputUserName)
-    saveConfiguration()
-    clearFlightplan()
-    refreshFlightplanNow()
-    inputUserName = '' -- Clear input line to keep user anonymous (in case he's streaming)
+  imgui.Separator()
+  
+  -- Simbrief user name is so important for us that we want to show it very prominently in case user attention is required
+  local userNameInvalid = CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus
+    or INVALID_USER_NAME or CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NO_SIMBRIEF_USER_ID_ENTERED
+  if menuItem == MENU_ITEM_OVERVIEW or userNameInvalid then -- Always show setting when there's something wrong with the user name
+    if userNameInvalid then
+      imgui.PushStyleColor(imgui.constant.Col.Text, colorErr)
+    end
+    local changeFlag, newUserName = imgui.InputText("Simbrief Username", inputUserName, 255)
+    if userNameInvalid then
+      imgui.PopStyleColor()
+    end
+    if changeFlag then inputUserName = newUserName end
+    imgui.SameLine()
+    if imgui.Button("Set") then
+      setConfiguredUserName(inputUserName)
+      saveConfiguration()
+      clearFlightplan()
+      refreshFlightplanNow()
+      inputUserName = '' -- Clear input line to keep user anonymous (in case he's streaming)
+    end
   end
   
-  if imgui.Button("Reload Flight Plan") then
-    clearFlightplan()
-    refreshFlightplanNow()
-  end
-  imgui.SameLine()
-  if imgui.Button("Reload ATC") then
-    clearAtcData()
-    refreshVatsimDataNow()
+  -- Content canvas
+  if menuItem == MENU_ITEM_OVERVIEW then
+    if imgui.Button("Reload Flight Plan") then
+      clearFlightplan()
+      refreshFlightplanNow()
+    end
+    imgui.SameLine()
+    if imgui.Button("Reload ATC") then
+      clearAtcData()
+      refreshVatsimDataNow()
+    end
+  elseif menuItem == MENU_ITEM_FLIGHTPLAN_DOWNLOAD then
+    if FlightplanId == nil then
+      imgui.TextUnformatted("Waiting for a flight plan ...")
+    else
+      imgui.TextUnformatted("Please mark the flight plan types that you want to be downloaded.\nDestination folder: " .. FlightplanDownloadDirectory)
+      local changed, newVal = imgui.Checkbox("Remove recent flight plans from disk when fetching new ones", getConfiguredDeleteOldFlightPlansSetting())
+      if changed then
+        setConfiguredDeleteOldFlightPlansSetting(newVal)
+        saveConfiguration()
+        -- deleteDownloadedFlightPlansIfConfigured() -- Better not that fast, without any confirmation
+      end
+      imgui.TextUnformatted("")
+      local fileTypes = getFlightplanFileTypesArray()
+      for i = 1, #fileTypes do
+        if i > 1 and i % 3 ~= 1 then imgui.SameLine() end
+        imgui.PushID(i)
+        local state
+        local nameWithPadding = string.format("%-25s", fileTypes[i])
+        local changed, newVal2 = imgui.Checkbox(nameWithPadding, isFlightplanFileDownloadEnabled(fileTypes[i]))
+        if changed then
+          setFlightplanFileDownloadEnabled(fileTypes[i], newVal2)
+          saveFlightPlanFilesForDownload()
+          downloadFlightplans()
+        end
+        imgui.PopID()
+      end
+    end
   end
 end
 
@@ -1063,7 +1421,7 @@ end
 function createVatsimbriefHelperControlWindow()
   tryVatsimbriefHelperInit()
   if vatsimbriefHelperControlWindow == nil then -- "Singleton window"
-    vatsimbriefHelperControlWindow = float_wnd_create(900, 80, 1, true)
+    vatsimbriefHelperControlWindow = float_wnd_create(900, 300, 1, true)
     float_wnd_set_title(vatsimbriefHelperControlWindow, "Vatsimbrief Helper Control")
     float_wnd_set_imgui_builder(vatsimbriefHelperControlWindow, "buildVatsimbriefHelperControlWindowCanvas")
     float_wnd_set_onclose(vatsimbriefHelperControlWindow, "destroyVatsimbriefHelperControlWindow")

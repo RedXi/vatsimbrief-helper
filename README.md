@@ -46,7 +46,7 @@ The plugin is not going to become another FMC. It's meant to provide the pilot w
 
 *I'm not using VATSIM. Does it make sense to use this plugin?*
 
-One can close the ATC window and only use the precious flight plan information. On the other hand, only using VATSIM without Simbrief does not make sense as the output of the ATC window depends on an active flight plan.
+One can close the ATC window and only use the precious flight plan information. On the other hand, only using VATSIM without Simbrief does not make sense as the output of the ATC window requires an active flight plan.
 
 ## Feedback
 
