@@ -6,9 +6,10 @@ The plugin provides information from the **Simbrief flight plan** and/or relevan
 
 It solves major issues that VR pilots usually face:
 
-* A printed flight plan can not be taken into VR. And even if the resolution of the VR device allows for, scrolling through tiny Simbrief flight plan fonts is usually very exhausting.
+* A printed flight plan can not be taken into VR. And even if the resolution of the VR device allows for, scrolling through tiny Simbrief flight plan fonts is usually very exhausting. Instead, there is a window showing the most important information from the flight plan, just enough to operate and monitor the flight.
 * VATSIM frequencies can not be obtained from official charts (e.g. Navigraph). Also, taking notes in VR takes a lot of time, which easily distresses pilots.
 * Air traffic control stations are highly volatile. When using the plugin it can be avoided to approach an unmonitored airport. Instead, pilots can divert to their alternate where there are air traffic controllers on service.
+* For Co-Op / Multi Crew VATSIM flights, depending on who's going to file the flight plan, it's annoying to share the corresponding VATSIM client file over and over again. Especially when performing last minute changes. Therefore, the download can now performed automatically along with displaying the flight plan in the cockpit.
 
 ![All windows](screenshots/overview.png "All windows")
 
@@ -25,7 +26,7 @@ It solves major issues that VR pilots usually face:
 * Windows can be toggled inside the plugins menu `Plugins / FlyWithLua / FlyWithLua Macros`:
   * `Vatsimbrief Helper Flight Plan`: Opens/closes a window showing a relevant excerpt of the flight plan.
   * `Vatsimbrief Helper ATC`: Opens/closes a window showing relevant ATC frequencies.
-  * `Vatsimbrief Helper Control`: Opens/closes a window for setting the Simbrief username or reloading the flight plan or ATC data manually.
+  * `Vatsimbrief Helper Control`: Opens/closes a window for setting the Simbrief username, reloading the flight plan or ATC data manually, and configuring the download of flight plans. The settings window should not remain opened during the flight. It shows a big lumpy to simplify user interaction in VR.
 * If an attribute has two values separated by `/`, the left value refers to the **destination** and the right one to the **alternate**
 * Windows will refresh automatically every minute.
 * If you find that the font in a window is too small, scale it up by dragging the bottom right corner of each window.
