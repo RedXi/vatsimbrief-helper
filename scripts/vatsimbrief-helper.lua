@@ -74,6 +74,55 @@ local function getExtensionOfFileName(s)
   end
 end
 
+local function splitStringBySeparator(str, separator)
+  -- I wonder why lua does not offer a simple function like this. Pretty annoying.
+  local result = {}
+  local c0 = 1 -- Offset of next chunk
+  while true do
+    i = str:find(separator, c0) -- Find "next" occurrence
+    if i == nil then break end
+    c1 = i - 1 -- Index of last char of next chunk
+    local chunk
+    if c1 > c0 then
+      chunk = str:sub(c0, c1)
+    else
+      chunk = ""
+    end
+    table.insert(result, chunk)
+    c0 = c0 + #chunk + #separator
+  end
+  
+  -- Append string after last separator
+  if c0 <= #str then
+    chunk = str:sub(c0)
+  else
+    chunk = ""
+  end
+  table.insert(result, chunk)
+  return result
+end
+
+local function wrapStringAtMaxlengthWithPadding(str, maxLength, padding)
+  local items = splitStringBySeparator(str, ' ')
+  local result = ''
+  local lineLength = 0
+  for i = 1, #items do
+    local item = items[i]
+    local itemLength = string.len(item)
+    if lineLength > 0 and lineLength + 1 + itemLength > maxLength then
+      result = result .. "\n" .. padding
+      lineLength = 0
+    end
+    if lineLength > 0 then
+      result = result .. " "
+      lineLength = lineLength + 1
+    end
+    result = result .. item
+    lineLength = lineLength + itemLength
+  end
+  return result
+end
+
 -- Color schema
 local colorA320Blue = 0xFFFFDDAA
 local colorNormal = 0xFFFFFFFF
@@ -809,34 +858,6 @@ local function getVatsimDataFetchStatusMessageAndColor()
   return msg, color
 end
 
-local function splitStringBySeparator(str, separator)
-  -- I wonder why lua does not offer a simple function like this. Pretty annoying.
-  local result = {}
-  local c0 = 1 -- Offset of next chunk
-  while true do
-    i = str:find(separator, c0) -- Find "next" occurrence
-    if i == nil then break end
-    c1 = i - 1 -- Index of last char of next chunk
-    local chunk
-    if c1 > c0 then
-      chunk = str:sub(c0, c1)
-    else
-      chunk = ""
-    end
-    table.insert(result, chunk)
-    c0 = c0 + #chunk + #separator
-  end
-  
-  -- Append string after last separator
-  if c0 <= #str then
-    chunk = str:sub(c0)
-  else
-    chunk = ""
-  end
-  table.insert(result, chunk)
-  return result
-end
-
 local function processVatsimDataDownloadFailure(httpRequest)
   if httpRequest.errorCode == HttpDownloadErrors.INTERNAL_SERVER_ERROR then CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
   elseif httpRequest.errorCode == HttpDownloadErrors.UNHANDLED_RESPONSE then CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE
@@ -986,23 +1007,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
       FlightplanWindowAirports = createFlightplanTableEntry("Airports", FlightplanWindowAirports)
       
       FlightplanWindowRoute = ("%s/%s %s %s/%s"):format(FlightplanOriginIcao, FlightplanOriginRunway, FlightplanRoute, FlightplanDestIcao, FlightplanDestRunway)
-      flightplanRouteItems = splitStringBySeparator(FlightplanWindowRoute, ' ')
-      FlightplanWindowRoute = ''
-      local lineLength = 0
-      for i = 1, #flightplanRouteItems do
-        local item = flightplanRouteItems[i]
-        local itemLength = string.len(item)
-        if lineLength > 0 and lineLength + 1 + itemLength > FlightplanWindow.MaxValueLengthUntilBreak then
-          FlightplanWindowRoute = FlightplanWindowRoute .. "\n" .. FlightplanWindow.FlightplanWindowValuePaddingLeft
-          lineLength = 0
-        end
-        if lineLength > 0 then
-          FlightplanWindowRoute = FlightplanWindowRoute .. " "
-          lineLength = lineLength + 1
-        end
-        FlightplanWindowRoute = FlightplanWindowRoute .. item
-        lineLength = lineLength + itemLength
-      end
+      FlightplanWindowRoute = wrapStringAtMaxlengthWithPadding(FlightplanWindowRoute, FlightplanWindow.MaxValueLengthUntilBreak, FlightplanWindow.FlightplanWindowValuePaddingLeft)
       FlightplanWindowRoute = createFlightplanTableEntry("Route", FlightplanWindowRoute)
       
       if stringIsNotEmpty(FlightplanAltIcao) then
@@ -1028,11 +1033,11 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
       end
       FlightplanWindowAltitudeAndTemp = createFlightplanTableEntry("Cruise", FlightplanWindowAltitudeAndTemp)
       
-      FlightplanWindowFuel = ("BLOCK=%d%s ALTN=%d%s RESERVE=%d%s T/O=%d%s"):format(
+      FlightplanWindowFuel = ("BLOCK=%d%s T/O=%d%s ALTN=%d%s RESERVE=%d%s"):format(
         FlightplanBlockFuel, FlightplanUnit,
+        FlightplanTakeoffFuel, FlightplanUnit,
         FlightplanAltFuel, FlightplanUnit,
-        FlightplanReserveFuel, FlightplanUnit,
-        FlightplanTakeoffFuel, FlightplanUnit)
+        FlightplanReserveFuel, FlightplanUnit)
       FlightplanWindowFuel = createFlightplanTableEntry("Fuel", FlightplanWindowFuel)
       
       FlightplanWindowWeights = ("CARGO=%d%s PAX=%d%s PAYLOAD=%d%s ZFW=%d%s"):format(
@@ -1111,6 +1116,10 @@ add_macro("Vatsimbrief Helper Flight Plan", "createVatsimbriefHelperFlightplanWi
 --
 -- ATC UI handling
 --
+
+local AtcWindow = {
+  WidthInCharacters = 63
+}
 
 local AtcWindowLastRenderedFlightplanId = nil
 local AtcWindowLastAtcIdentifiersUpdatedTimestamp = nil
@@ -1254,9 +1263,23 @@ function buildVatsimbriefHelperAtcWindowCanvas()
         if #MapAtcIdentifiersToAtcInfo == 0 then
           Atcs = 'No ATCs found. This will probably be a technical problem.'
         else
-          Atcs = FlightplanOriginIcao .. ": " .. renderAirportAtcToString(FlightplanOriginIcao, FlightplanOriginIata)
-            .. "\n" .. FlightplanDestIcao .. ": " .. renderAirportAtcToString(FlightplanDestIcao, FlightplanDestIata)
-          if stringIsNotEmpty(FlightplanAltIcao) then Atcs = Atcs .. "\n" .. FlightplanAltIcao .. ": " .. renderAirportAtcToString(FlightplanAltIcao, FlightplanAltIata) end
+          local location = { FlightplanOriginIcao, FlightplanDestIcao }
+          local frequencies = { renderAirportAtcToString(FlightplanOriginIcao, FlightplanOriginIata), renderAirportAtcToString(FlightplanDestIcao, FlightplanDestIata) }
+          if stringIsNotEmpty(FlightplanAltIcao) then
+            table.insert(location, FlightplanAltIcao)
+            table.insert(frequencies, renderAirportAtcToString(FlightplanAltIcao, FlightplanAltIata))
+          end
+          local maxKeyLength = 0
+          for i = 1, #location do if string.len(location[i]) > maxKeyLength then maxKeyLength = string.len(location[i]) end end
+          local separatorBetweenLocationAndFrequencies = ": "
+          maxKeyLength = maxKeyLength + string.len(separatorBetweenLocationAndFrequencies)
+          local padding = string.rep(' ', maxKeyLength)
+          local maxValueLength = AtcWindow.WidthInCharacters - maxKeyLength
+          
+          Atcs = ''
+          for i = 1, #location do
+            Atcs = Atcs .. ("%s%s%s\n"):format(location[i], separatorBetweenLocationAndFrequencies, wrapStringAtMaxlengthWithPadding(frequencies[i], maxValueLength, padding))
+          end
         end
       end
     end
