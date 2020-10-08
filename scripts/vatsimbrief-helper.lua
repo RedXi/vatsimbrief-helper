@@ -237,6 +237,48 @@ local function getConfiguredDeleteOldFlightPlansSetting()
   end
 end
 
+local function setConfiguredAtcWindowVisibility(value)
+  if VatsimbriefConfiguration.atc == nil then VatsimbriefConfiguration.atc = {} end
+  local strValue
+  if value then strValue = 'visible' else strValue = 'hidden' end
+  VatsimbriefConfiguration.atc.windowVisibility = strValue
+end
+
+local function getConfiguredAtcWindowVisibility(defaultValue)
+  if VatsimbriefConfiguration.atc == nil then VatsimbriefConfiguration.atc = {} end
+  if VatsimbriefConfiguration.atc.windowVisibility == nil then
+    return defaultValue
+  end
+  if trim(VatsimbriefConfiguration.atc.windowVisibility) == 'visible' then
+    return true
+  elseif trim(VatsimbriefConfiguration.atc.windowVisibility) == 'hidden' then
+    return false
+  else
+    return defaultValue
+  end
+end
+
+local function setConfiguredFlightPlanWindowVisibility(value)
+  if VatsimbriefConfiguration.simbrief == nil then VatsimbriefConfiguration.simbrief = {} end
+  local strValue
+  if value then strValue = 'visible' else strValue = 'hidden' end
+  VatsimbriefConfiguration.simbrief.windowVisibility = strValue
+end
+
+local function getConfiguredFlightPlanWindowVisibility(defaultValue)
+  if VatsimbriefConfiguration.simbrief == nil then VatsimbriefConfiguration.simbrief = {} end
+  if VatsimbriefConfiguration.simbrief.windowVisibility == nil then
+    return defaultValue
+  end
+  if trim(VatsimbriefConfiguration.simbrief.windowVisibility) == 'visible' then
+    return true
+  elseif trim(VatsimbriefConfiguration.simbrief.windowVisibility) == 'hidden' then
+    return false
+  else
+    return defaultValue
+  end
+end
+
 loadConfiguration() -- Initially load configuration synchronously so it's present below this line
 
 --
@@ -318,6 +360,8 @@ local function performDefaultHttpGetRequest(url, resultCallback, errorCallback, 
     end
   end
 end
+
+local function windowVisibilityToInitialMacroState(windowIsVisible) if windowIsVisible then return "activate" else return "deactivate" end end
 
 --
 -- Download of Simbrief flight plans
@@ -1099,6 +1143,8 @@ local vatsimbriefHelperFlightplanWindow = nil
 
 function destroyVatsimbriefHelperFlightplanWindow()
 	if vatsimbriefHelperFlightplanWindow then
+    setConfiguredFlightPlanWindowVisibility(false)
+    saveConfiguration()
 		float_wnd_destroy(vatsimbriefHelperFlightplanWindow)
     vatsimbriefHelperFlightplanWindow = nil
 	end
@@ -1106,13 +1152,15 @@ end
 
 function createVatsimbriefHelperFlightplanWindow()
   tryVatsimbriefHelperInit()
+  setConfiguredFlightPlanWindowVisibility(true)
+  saveConfiguration()
 	vatsimbriefHelperFlightplanWindow = float_wnd_create(650, 210, 1, true)
 	float_wnd_set_title(vatsimbriefHelperFlightplanWindow, "Vatsimbrief Helper Flight Plan")
 	float_wnd_set_imgui_builder(vatsimbriefHelperFlightplanWindow, "buildVatsimbriefHelperFlightplanWindowCanvas")
 	float_wnd_set_onclose(vatsimbriefHelperFlightplanWindow, "destroyVatsimbriefHelperFlightplanWindow")
 end
 
-add_macro("Vatsimbrief Helper Flight Plan", "createVatsimbriefHelperFlightplanWindow()", "destroyVatsimbriefHelperFlightplanWindow()", "activate")
+add_macro("Vatsimbrief Helper Flight Plan", "createVatsimbriefHelperFlightplanWindow()", "destroyVatsimbriefHelperFlightplanWindow()", windowVisibilityToInitialMacroState(getConfiguredFlightPlanWindowVisibility(true)))
 
 --
 -- ATC UI handling
@@ -1343,6 +1391,8 @@ do_sometimes("updateAtcWindowTitle()")
 
 function destroyVatsimbriefHelperAtcWindow()
 	if vatsimbriefHelperAtcWindow then
+    setConfiguredAtcWindowVisibility(false)
+    saveConfiguration()
 		float_wnd_destroy(vatsimbriefHelperAtcWindow)
     vatsimbriefHelperAtcWindow = nil
 	end
@@ -1350,13 +1400,15 @@ end
 
 function createVatsimbriefHelperAtcWindow()
   tryVatsimbriefHelperInit()
+  setConfiguredAtcWindowVisibility(true)
+  saveConfiguration()
 	vatsimbriefHelperAtcWindow = float_wnd_create(560, 90, 1, true)
 	updateAtcWindowTitle()
 	float_wnd_set_imgui_builder(vatsimbriefHelperAtcWindow, "buildVatsimbriefHelperAtcWindowCanvas")
 	float_wnd_set_onclose(vatsimbriefHelperAtcWindow, "destroyVatsimbriefHelperAtcWindow")
 end
 
-add_macro("Vatsimbrief Helper ATC", "createVatsimbriefHelperAtcWindow()", "destroyVatsimbriefHelperAtcWindow()", "activate")
+add_macro("Vatsimbrief Helper ATC", "createVatsimbriefHelperAtcWindow()", "destroyVatsimbriefHelperAtcWindow()", windowVisibilityToInitialMacroState(getConfiguredAtcWindowVisibility(true)))
 
 --
 -- Control UI handling

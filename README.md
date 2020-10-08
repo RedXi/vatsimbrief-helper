@@ -30,6 +30,7 @@ It solves major issues that VR pilots usually face:
 * If an attribute has two values separated by `/`, the left value refers to the **destination** and the right one to the **alternate**
 * Windows will refresh automatically every minute.
 * If you find that the font in a window is too small, scale it up by dragging the bottom right corner of each window.
+* Note that the visibility of windows will be saved between sessions. To restore a window, reopen it manually in the menu `Plugins / FlyWithLua / FlyWithLua Macros`.
 
 **Happy Flying!**
 
@@ -47,7 +48,7 @@ The plugin is not going to become another FMC. It's meant to provide the pilot w
 
 *I'm not using VATSIM. Does it make sense to use this plugin?*
 
-One can close the ATC window and only use the precious flight plan information. On the other hand, only using VATSIM without Simbrief does not make sense as the output of the ATC window requires an active flight plan.
+One can close the ATC window in the menu at `Plugins / FlyWithLua / FlyWithLua Macros` and only use the precious flight plan information. On the other hand, only using VATSIM without Simbrief does not make sense as the output of the ATC window requires an active flight plan.
 
 ## Feedback
 
