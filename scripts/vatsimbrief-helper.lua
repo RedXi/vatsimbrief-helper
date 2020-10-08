@@ -928,14 +928,19 @@ local FlightplanWindowWeights = ""
 local FlightplanWindowTrack = ""
 local FlightplanWindowMetars = ""
 
-local FlightplanWindowKeyWidth = 14
+local FlightplanWindow = {
+  KeyWidth = 11, -- If changing this, also change max value length
+  MaxValueLengthUntilBreak = 79, -- 90 characters minus keyWidth of 11
+  FlightplanWindowValuePaddingLeft = '',
+}
+FlightplanWindow.FlightplanWindowValuePaddingLeft = string.rep(' ', FlightplanWindow.KeyWidth)
 
 local FlightplanWindowLastRenderedSimbriefFlightplanFetchStatus = CurrentSimbriefFlightplanFetchStatus
 local FlightplanWindowFlightplanDownloadStatus = ''
 local FlightplanWindowFlightplanDownloadStatusColor = 0
 
 local function createFlightplanTableEntry(name, value)
-  return ("%-" .. FlightplanWindowKeyWidth .. "s%s"):format(name .. ':', value)
+  return ("%-" .. FlightplanWindow.KeyWidth .. "s%s"):format(name .. ':', value)
 end
 
 function timespanToHm(s)
@@ -981,6 +986,23 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
       FlightplanWindowAirports = createFlightplanTableEntry("Airports", FlightplanWindowAirports)
       
       FlightplanWindowRoute = ("%s/%s %s %s/%s"):format(FlightplanOriginIcao, FlightplanOriginRunway, FlightplanRoute, FlightplanDestIcao, FlightplanDestRunway)
+      flightplanRouteItems = splitStringBySeparator(FlightplanWindowRoute, ' ')
+      FlightplanWindowRoute = ''
+      local lineLength = 0
+      for i = 1, #flightplanRouteItems do
+        local item = flightplanRouteItems[i]
+        local itemLength = string.len(item)
+        if lineLength > 0 and lineLength + 1 + itemLength > FlightplanWindow.MaxValueLengthUntilBreak then
+          FlightplanWindowRoute = FlightplanWindowRoute .. "\n" .. FlightplanWindow.FlightplanWindowValuePaddingLeft
+          lineLength = 0
+        end
+        if lineLength > 0 then
+          FlightplanWindowRoute = FlightplanWindowRoute .. " "
+          lineLength = lineLength + 1
+        end
+        FlightplanWindowRoute = FlightplanWindowRoute .. item
+        lineLength = lineLength + itemLength
+      end
       FlightplanWindowRoute = createFlightplanTableEntry("Route", FlightplanWindowRoute)
       
       if stringIsNotEmpty(FlightplanAltIcao) then
@@ -1029,9 +1051,9 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
       end
       FlightplanWindowTrack = createFlightplanTableEntry("Track", FlightplanWindowTrack)
       
-      FlightplanWindowMetars = ("%s\n%s%s"):format(FlightplanOriginMetar, string.rep(' ', FlightplanWindowKeyWidth), FlightplanDestMetar)
+      FlightplanWindowMetars = ("%s\n%s%s"):format(FlightplanOriginMetar, FlightplanWindow.FlightplanWindowValuePaddingLeft, FlightplanDestMetar)
       if stringIsNotEmpty(FlightplanAltIcao) then
-        FlightplanWindowMetars = FlightplanWindowMetars .. ("\n%s%s"):format(string.rep(' ', FlightplanWindowKeyWidth), FlightplanAltMetar)
+        FlightplanWindowMetars = FlightplanWindowMetars .. ("\n%s%s"):format(FlightplanWindow.FlightplanWindowValuePaddingLeft, FlightplanAltMetar)
       end
       FlightplanWindowMetars = createFlightplanTableEntry("METARs", FlightplanWindowMetars)
     end
@@ -1078,7 +1100,7 @@ end
 
 function createVatsimbriefHelperFlightplanWindow()
   tryVatsimbriefHelperInit()
-	vatsimbriefHelperFlightplanWindow = float_wnd_create(800, 200, 1, true)
+	vatsimbriefHelperFlightplanWindow = float_wnd_create(650, 210, 1, true)
 	float_wnd_set_title(vatsimbriefHelperFlightplanWindow, "Vatsimbrief Helper Flight Plan")
 	float_wnd_set_imgui_builder(vatsimbriefHelperFlightplanWindow, "buildVatsimbriefHelperFlightplanWindowCanvas")
 	float_wnd_set_onclose(vatsimbriefHelperFlightplanWindow, "destroyVatsimbriefHelperFlightplanWindow")
