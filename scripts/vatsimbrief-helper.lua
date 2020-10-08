@@ -521,7 +521,7 @@ do_sometimes("downloadFlightplans()")
 --
 
 local function removeLinebreaksFromString(s)
-  return string.gsub(s, "\n", "")
+  return string.gsub(s, "\n", " ")
 end
 
 local xml2lua = require("xml2lua")
