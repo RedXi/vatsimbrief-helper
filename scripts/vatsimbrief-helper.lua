@@ -1126,8 +1126,6 @@ local function renderAtcString(info)
   return shortId .. '=' .. info.frequency
 end
 
-do_sometimes("updateAtcWindowTitle()")
-
 local function renderAirportAtcToString(airportIcao, airportIata)
   local atis = {}
   local del = {}
@@ -1291,9 +1289,11 @@ local vatsimbriefHelperAtcWindow = nil
 
 function updateAtcWindowTitle()
   if vatsimbriefHelperAtcWindow ~= nil then
-    float_wnd_set_title(vatsimbriefHelperAtcWindow, "Vatsimbrief Helper ATC")
+    float_wnd_set_title(vatsimbriefHelperAtcWindow, ("Vatsimbrief Helper ATC (%s)"):format(os.date("%H%MZ")))
   end
 end
+
+do_sometimes("updateAtcWindowTitle()")
 
 function destroyVatsimbriefHelperAtcWindow()
 	if vatsimbriefHelperAtcWindow then
