@@ -1012,6 +1012,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
       
       if stringIsNotEmpty(FlightplanAltIcao) then
         FlightplanWindowAltRoute = ("%s/%s %s %s/%s"):format(FlightplanDestIcao, FlightplanDestRunway, FlightplanAltRoute, FlightplanAltIcao, FlightplanAltRunway)
+        FlightplanWindowAltRoute = wrapStringAtMaxlengthWithPadding(FlightplanWindowAltRoute, FlightplanWindow.MaxValueLengthUntilBreak, FlightplanWindow.FlightplanWindowValuePaddingLeft)
         FlightplanWindowAltRoute = createFlightplanTableEntry("Alt Route", FlightplanWindowAltRoute)
       else
         FlightplanWindowAltRoute = ""
