@@ -237,6 +237,50 @@ local function getConfiguredDeleteOldFlightPlansSetting()
   end
 end
 
+local function setConfiguredAutoRefreshAtcSetting(value)
+  if VatsimbriefConfiguration.atc == nil then VatsimbriefConfiguration.atc = {} end
+  local strValue
+  if value then strValue = 'yes' else strValue = 'no' end
+  VatsimbriefConfiguration.atc.autoRefresh = strValue
+end
+
+local function getConfiguredAutoRefreshAtcSettingDefaultTrue()
+  local defaultValue = true
+  if VatsimbriefConfiguration.atc == nil then VatsimbriefConfiguration.atc = {} end
+  if VatsimbriefConfiguration.atc.autoRefresh == nil then
+    return defaultValue
+  end
+  if trim(VatsimbriefConfiguration.atc.autoRefresh) == 'yes' then
+    return true
+  elseif trim(VatsimbriefConfiguration.atc.autoRefresh) == 'no' then
+    return false
+  else
+    return defaultValue
+  end
+end
+
+local function setConfiguredAutoRefreshFlightPlanSetting(value)
+  if VatsimbriefConfiguration.flightplan == nil then VatsimbriefConfiguration.flightplan = {} end
+  local strValue
+  if value then strValue = 'yes' else strValue = 'no' end
+  VatsimbriefConfiguration.flightplan.autoRefresh = strValue
+end
+
+local function getConfiguredAutoRefreshFlightPlanSettingDefaultFalse()
+  local defaultValue = false
+  if VatsimbriefConfiguration.flightplan == nil then VatsimbriefConfiguration.flightplan = {} end
+  if VatsimbriefConfiguration.flightplan.autoRefresh == nil then
+    return defaultValue
+  end
+  if trim(VatsimbriefConfiguration.flightplan.autoRefresh) == 'yes' then
+    return true
+  elseif trim(VatsimbriefConfiguration.flightplan.autoRefresh) == 'no' then
+    return false
+  else
+    return defaultValue
+  end
+end
+
 local function setConfiguredAtcWindowVisibility(value)
   if VatsimbriefConfiguration.atc == nil then VatsimbriefConfiguration.atc = {} end
   local strValue
@@ -244,7 +288,8 @@ local function setConfiguredAtcWindowVisibility(value)
   VatsimbriefConfiguration.atc.windowVisibility = strValue
 end
 
-local function getConfiguredAtcWindowVisibility(defaultValue)
+local function getConfiguredAtcWindowVisibilityDefaultTrue()
+  local defaultValue = true
   if VatsimbriefConfiguration.atc == nil then VatsimbriefConfiguration.atc = {} end
   if VatsimbriefConfiguration.atc.windowVisibility == nil then
     return defaultValue
@@ -259,20 +304,20 @@ local function getConfiguredAtcWindowVisibility(defaultValue)
 end
 
 local function setConfiguredFlightPlanWindowVisibility(value)
-  if VatsimbriefConfiguration.simbrief == nil then VatsimbriefConfiguration.simbrief = {} end
+  if VatsimbriefConfiguration.flightplan == nil then VatsimbriefConfiguration.flightplan = {} end
   local strValue
   if value then strValue = 'visible' else strValue = 'hidden' end
-  VatsimbriefConfiguration.simbrief.windowVisibility = strValue
+  VatsimbriefConfiguration.flightplan.windowVisibility = strValue
 end
 
 local function getConfiguredFlightPlanWindowVisibility(defaultValue)
-  if VatsimbriefConfiguration.simbrief == nil then VatsimbriefConfiguration.simbrief = {} end
-  if VatsimbriefConfiguration.simbrief.windowVisibility == nil then
+  if VatsimbriefConfiguration.flightplan == nil then VatsimbriefConfiguration.flightplan = {} end
+  if VatsimbriefConfiguration.flightplan.windowVisibility == nil then
     return defaultValue
   end
-  if trim(VatsimbriefConfiguration.simbrief.windowVisibility) == 'visible' then
+  if trim(VatsimbriefConfiguration.flightplan.windowVisibility) == 'visible' then
     return true
-  elseif trim(VatsimbriefConfiguration.simbrief.windowVisibility) == 'hidden' then
+  elseif trim(VatsimbriefConfiguration.flightplan.windowVisibility) == 'hidden' then
     return false
   else
     return defaultValue
@@ -843,15 +888,17 @@ local refreshFlightplanTimer = timer.new({
   params = {},
   initial_delay = 0, -- Make sure we have information asap
     -- Usually, the user will have his username configured and flightplan already armed
-  callback = function(timer_obj, params) refreshFlightplanNow() end
+  callback = function(timer_obj, params) if getConfiguredAutoRefreshFlightPlanSettingDefaultFalse() then refreshFlightplanNow() end end
 })
 
 --
 -- VATSIM data
 --
 
-local MapAtcIdentifiersToAtcInfo = {}
-local AtcIdentifiersUpdatedTimestamp = nil
+local VatsimData = {
+  MapAtcIdentifiersToAtcInfo = {},
+  AtcIdentifiersUpdatedTimestamp = nil
+}
 
 local VatsimDataFetchStatusLevel = {
   INFO = 0,
@@ -913,7 +960,7 @@ local function processNewVatsimData(httpRequest)
   if httpRequest.httpStatusCode ~= 200 then
     CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
   else
-    MapAtcIdentifiersToAtcInfo = {}
+    VatsimData.MapAtcIdentifiersToAtcInfo = {}
     local lines = splitStringBySeparator(httpRequest.responseBody, "\n")
     for _, line in ipairs(lines) do
       -- Example line: SBWJ_APP:1030489:hamilton junior:ATC:119.000:-23.37825:-46.84175:0:0::::::SINGAPORE:100:4:0:5:159::::::::::::0:0:0:0:ATIS B 2200Z   ^Â§SBRJ VMC QNH 1007 DEP/ARR RWY 20LRNAV D/E^Â§SBGL VMC QNH 1008  DEP/ARR RWY 10 ILS X:20201002211135:20201002211135:0:0:0:
@@ -922,27 +969,31 @@ local function processNewVatsimData(httpRequest)
       if line:find(":ATC:") ~= nil then
         local parts = splitStringBySeparator(line, ':')
         if table.getn(parts) >= 5 and parts[4] == 'ATC' then
-          table.insert(MapAtcIdentifiersToAtcInfo, { id = parts[1], frequency = parts[5] })
+          table.insert(VatsimData.MapAtcIdentifiersToAtcInfo, { id = parts[1], frequency = parts[5] })
         end
       end
     end
     
-    AtcIdentifiersUpdatedTimestamp = os.clock()
+    VatsimData.AtcIdentifiersUpdatedTimestamp = os.clock()
     
     CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.NO_ERROR
   end
 end
 
 local function refreshVatsimDataNow()
-  copas.addthread(function()
-    CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.DOWNLOADING
-    local url = "http://cluster.data.vatsim.net/vatsim-data.txt"
-    performDefaultHttpGetRequest(url, processNewVatsimData, processVatsimDataDownloadFailure)
-  end)
+  if getConfiguredAtcWindowVisibilityDefaultTrue() then -- ATM, don't refresh when ATC window is not opened
+    copas.addthread(function()
+      CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.DOWNLOADING
+      local url = "http://cluster.data.vatsim.net/vatsim-data.txt"
+      performDefaultHttpGetRequest(url, processNewVatsimData, processVatsimDataDownloadFailure)
+    end)
+  else
+    logMsg("ATC window is currently closed. No refresh of VATSIM data necessary.")
+  end
 end
 
 local function clearAtcData()
-  AtcIdentifiersUpdatedTimestamp = nil
+  VatsimData.AtcIdentifiersUpdatedTimestamp = nil
 end
 
 local refreshVatsimDataTimer = timer.new({
@@ -950,7 +1001,7 @@ local refreshVatsimDataTimer = timer.new({
   recurring = true,
   params = {},
   initial_delay = 0, -- Make sure we have information asap
-  callback = function(timer_obj, params) refreshVatsimDataNow() end
+  callback = function(timer_obj, params) if getConfiguredAutoRefreshAtcSettingDefaultTrue() then refreshVatsimDataNow() end end
 })
 
 --
@@ -1142,7 +1193,7 @@ end
 local vatsimbriefHelperFlightplanWindow = nil
 
 function destroyVatsimbriefHelperFlightplanWindow()
-	if vatsimbriefHelperFlightplanWindow then
+	if vatsimbriefHelperFlightplanWindow ~= nil then
     setConfiguredFlightPlanWindowVisibility(false)
     saveConfiguration()
 		float_wnd_destroy(vatsimbriefHelperFlightplanWindow)
@@ -1154,6 +1205,7 @@ function createVatsimbriefHelperFlightplanWindow()
   tryVatsimbriefHelperInit()
   setConfiguredFlightPlanWindowVisibility(true)
   saveConfiguration()
+  refreshFlightplanNow()
 	vatsimbriefHelperFlightplanWindow = float_wnd_create(650, 210, 1, true)
 	float_wnd_set_title(vatsimbriefHelperFlightplanWindow, "Vatsimbrief Helper Flight Plan")
 	float_wnd_set_imgui_builder(vatsimbriefHelperFlightplanWindow, "buildVatsimbriefHelperFlightplanWindowCanvas")
@@ -1186,6 +1238,7 @@ local AtcWindowLastRenderedVatsimDataFetchStatus = CurrentVatsimDataFlightplanFe
 local AtcWindowVatsimDataDownloadStatus = ''
 local AtcWindowVatsimDataDownloadStatusColor = 0
 local showVatsimDataIsDownloading = false
+local showVatsimDataIsDisabled = false
 
 local function renderAtcString(info)
   local shortId
@@ -1217,7 +1270,7 @@ local function renderAirportAtcToString(airportIcao, airportIata)
   
   local icaoPrefix = airportIcao .. '_'
   local iataPrefix = airportIata .. '_'
-  for _, v in pairs(MapAtcIdentifiersToAtcInfo) do
+  for _, v in pairs(VatsimData.MapAtcIdentifiersToAtcInfo) do
     if v.id:find(icaoPrefix) == 1 or v.id:find(iataPrefix) == 1 then
       if stringEndsWith(v.id, "_ATIS") then
         table.insert(atis, renderAtcString(v))
@@ -1256,7 +1309,7 @@ end
 function buildVatsimbriefHelperAtcWindowCanvas()
 	-- Invent a caching mechanism to prevent rendering the strings each frame
   local flightplanChanged = AtcWindowLastRenderedFlightplanId ~= FlightplanId
-  local atcIdentifiersUpdated = AtcWindowLastAtcIdentifiersUpdatedTimestamp ~= AtcIdentifiersUpdatedTimestamp
+  local atcIdentifiersUpdated = AtcWindowLastAtcIdentifiersUpdatedTimestamp ~= VatsimData.AtcIdentifiersUpdatedTimestamp
   local flightplanFetchStatusChanged = AtcWindowLastRenderedSimbriefFlightplanFetchStatus ~= CurrentSimbriefFlightplanFetchStatus
   local vatsimDataFetchStatusChanged = AtcWindowLastRenderedVatsimDataFetchStatus ~= CurrentVatsimDataFetchStatus
   local renderContent = flightplanChanged or atcIdentifiersUpdated or flightplanFetchStatusChanged or vatsimDataFetchStatusChanged or not AtcWindowHasRenderedContent
@@ -1300,16 +1353,18 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     RouteSeparatorLine = string.rep("-", #Route)
     
     -- Try to render ATC data
-    if numberIsNilOrZero(AtcIdentifiersUpdatedTimestamp) then
+    if numberIsNilOrZero(VatsimData.AtcIdentifiersUpdatedTimestamp) then
       Atcs = ''
       -- Only show "downloading" message when there is no VATSIM data yet and no other download status is rendered
       showVatsimDataIsDownloading = CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.DOWNLOADING
+      showVatsimDataIsDisabled = CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.NO_DOWNLOAD_ATTEMPTED and getConfiguredAutoRefreshAtcSettingDefaultTrue() ~= true
     else
       showVatsimDataIsDownloading = false
+      showVatsimDataIsDisabled = false
       if stringIsEmpty(FlightplanId) then
-        Atcs = ("Got %d ATC stations. Waiting for flight plan ..."):format(#MapAtcIdentifiersToAtcInfo)
+        Atcs = ("Got %d ATC stations. Waiting for flight plan ..."):format(#VatsimData.MapAtcIdentifiersToAtcInfo)
       else
-        if #MapAtcIdentifiersToAtcInfo == 0 then
+        if #VatsimData.MapAtcIdentifiersToAtcInfo == 0 then
           Atcs = 'No ATCs found. This will probably be a technical problem.'
         else
           local location = { FlightplanOriginIcao, FlightplanDestIcao }
@@ -1336,7 +1391,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     AtcWindowLastRenderedSimbriefFlightplanFetchStatus = CurrentSimbriefFlightplanFetchStatus
     AtcWindowLastRenderedVatsimDataFetchStatus = CurrentVatsimDataFetchStatus
     AtcWindowLastRenderedFlightplanId = FlightplanId
-    AtcWindowLastAtcIdentifiersUpdatedTimestamp = AtcIdentifiersUpdatedTimestamp
+    AtcWindowLastAtcIdentifiersUpdatedTimestamp = VatsimData.AtcIdentifiersUpdatedTimestamp
     AtcWindowHasRenderedContent = true
   end
 	
@@ -1362,13 +1417,15 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     imgui.TextUnformatted(RouteSeparatorLine)
     imgui.PopStyleColor()
   end
-  if AtcIdentifiersUpdatedTimestamp ~= nil then -- Show information if data is old
-    local ageOfAtcDataMinutes = math.floor((os.clock() - AtcIdentifiersUpdatedTimestamp) * (1.0 / 60.0))
-    if ageOfAtcDataMinutes >= 3 then
-      imgui.PushStyleColor(imgui.constant.Col.Text, colorWarn)
-      -- Note: Render text here as the minutes update every minute and not "on event" when a re-rendering occurs
-      imgui.TextUnformatted(("No new VATSIM data for %d minutes!"):format(ageOfAtcDataMinutes))
-      imgui.PopStyleColor()
+  if getConfiguredAutoRefreshAtcSettingDefaultTrue() then -- Only show overaged data when auto refresh is on
+    if VatsimData.AtcIdentifiersUpdatedTimestamp ~= nil then -- Show information if data is old
+      local ageOfAtcDataMinutes = math.floor((os.clock() - VatsimData.AtcIdentifiersUpdatedTimestamp) * (1.0 / 60.0))
+      if ageOfAtcDataMinutes >= 3 then
+        imgui.PushStyleColor(imgui.constant.Col.Text, colorWarn)
+        -- Note: Render text here as the minutes update every minute and not "on event" when a re-rendering occurs
+        imgui.TextUnformatted(("No new VATSIM data for %d minutes!"):format(ageOfAtcDataMinutes))
+        imgui.PopStyleColor()
+      end
     end
   end
   if showVatsimDataIsDownloading then
@@ -1390,7 +1447,7 @@ end
 do_sometimes("updateAtcWindowTitle()")
 
 function destroyVatsimbriefHelperAtcWindow()
-	if vatsimbriefHelperAtcWindow then
+	if vatsimbriefHelperAtcWindow ~= nil then
     setConfiguredAtcWindowVisibility(false)
     saveConfiguration()
 		float_wnd_destroy(vatsimbriefHelperAtcWindow)
@@ -1401,6 +1458,7 @@ end
 function createVatsimbriefHelperAtcWindow()
   tryVatsimbriefHelperInit()
   setConfiguredAtcWindowVisibility(true)
+  refreshVatsimDataNow()
   saveConfiguration()
 	vatsimbriefHelperAtcWindow = float_wnd_create(560, 90, 1, true)
 	updateAtcWindowTitle()
@@ -1408,7 +1466,7 @@ function createVatsimbriefHelperAtcWindow()
 	float_wnd_set_onclose(vatsimbriefHelperAtcWindow, "destroyVatsimbriefHelperAtcWindow")
 end
 
-add_macro("Vatsimbrief Helper ATC", "createVatsimbriefHelperAtcWindow()", "destroyVatsimbriefHelperAtcWindow()", windowVisibilityToInitialMacroState(getConfiguredAtcWindowVisibility(true)))
+add_macro("Vatsimbrief Helper ATC", "createVatsimbriefHelperAtcWindow()", "destroyVatsimbriefHelperAtcWindow()", windowVisibilityToInitialMacroState(getConfiguredAtcWindowVisibilityDefaultTrue()))
 
 --
 -- Control UI handling
@@ -1472,10 +1530,27 @@ function buildVatsimbriefHelperControlWindowCanvas()
       clearFlightplan()
       refreshFlightplanNow()
     end
+    --[[ Remove auto reloading for flight plans. Might cause stuttering and should be done manually anyway.
+         IRL, the pilot turns the page as well.
+
     imgui.SameLine()
-    if imgui.Button("Reload ATC") then
+    local changed, newVal = imgui.Checkbox("Auto Reload", getConfiguredAutoRefreshFlightPlanSettingDefaultFalse())
+    if changed then
+      setConfiguredAutoRefreshFlightPlanSetting(newVal)
+      saveConfiguration()
+    end ]]--
+    imgui.SameLine()
+    imgui.TextUnformatted(" | ")
+    imgui.SameLine()
+    if imgui.Button("Refresh ATC") then
       clearAtcData()
       refreshVatsimDataNow()
+    end
+    imgui.SameLine()
+    local changed2, newVal2 = imgui.Checkbox("Auto Refresh", getConfiguredAutoRefreshAtcSettingDefaultTrue())
+    if changed2 then
+      setConfiguredAutoRefreshAtcSetting(newVal2)
+      saveConfiguration()
     end
   elseif menuItem == MENU_ITEM_FLIGHTPLAN_DOWNLOAD then
     if FlightplanId == nil then
@@ -1510,7 +1585,7 @@ end
 local vatsimbriefHelperControlWindow = nil
 
 function destroyVatsimbriefHelperControlWindow()
-	if vatsimbriefHelperControlWindow then
+	if vatsimbriefHelperControlWindow ~= nil then
 		float_wnd_destroy(vatsimbriefHelperControlWindow)
     vatsimbriefHelperControlWindow = nil
 	end

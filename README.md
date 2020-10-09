@@ -25,10 +25,9 @@ It solves major issues that VR pilots usually face:
 * Create your flight plan on [simbrief](https://www.simbrief.com/) as usual, at some time before takeoff.
 * Windows can be toggled inside the plugins menu `Plugins / FlyWithLua / FlyWithLua Macros`:
   * `Vatsimbrief Helper Flight Plan`: Opens/closes a window showing a relevant excerpt of the flight plan.
-  * `Vatsimbrief Helper ATC`: Opens/closes a window showing relevant ATC frequencies.
-  * `Vatsimbrief Helper Control`: Opens/closes a window for setting the Simbrief username, reloading the flight plan or ATC data manually, and configuring the download of flight plans. The settings window should not remain opened during the flight. It shows a big lumpy to simplify user interaction in VR.
+  * `Vatsimbrief Helper ATC`: Opens/closes a window showing relevant ATC frequencies that will refresh every minute, if "Auto Refresh" is enabled.
+  * `Vatsimbrief Helper Control`: Opens/closes a window for setting the Simbrief username, reloading the flight plan or ATC data manually, and configuring the download of flight plans. The settings window should be closed during the flight. It shows a big lumpy to simplify user interaction in VR.
 * If an attribute has two values separated by `/`, the left value refers to the **destination** and the right one to the **alternate**
-* Windows will refresh automatically every minute.
 * If you find that the font in a window is too small, scale it up by dragging the bottom right corner of each window.
 * Note that the visibility of windows will be saved between sessions. To restore a window, reopen it manually in the menu `Plugins / FlyWithLua / FlyWithLua Macros`.
 
