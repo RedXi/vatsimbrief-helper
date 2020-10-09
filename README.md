@@ -47,7 +47,7 @@ The plugin is not going to become another FMC. It's meant to provide the pilot w
 
 *I'm not using VATSIM. Does it make sense to use this plugin?*
 
-One can close the ATC window in the menu at `Plugins / FlyWithLua / FlyWithLua Macros` and only use the precious flight plan information. On the other hand, only using VATSIM without Simbrief does not make sense as the output of the ATC window requires an active flight plan.
+Sure. One can close the ATC window in the menu at `Plugins / FlyWithLua / FlyWithLua Macros` and only use the precious flight plan information. On the other hand, only using VATSIM without Simbrief does not make sense as the output of the ATC window is based on an active flight plan.
 
 ## Feedback
 
