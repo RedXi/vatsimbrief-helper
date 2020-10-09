@@ -1585,10 +1585,10 @@ end
 local vatsimbriefHelperControlWindow = nil
 
 function destroyVatsimbriefHelperControlWindow()
-	if vatsimbriefHelperControlWindow ~= nil then
-		float_wnd_destroy(vatsimbriefHelperControlWindow)
+  if vatsimbriefHelperControlWindow ~= nil then
+    float_wnd_destroy(vatsimbriefHelperControlWindow)
     vatsimbriefHelperControlWindow = nil
-	end
+  end
 end
 
 function createVatsimbriefHelperControlWindow()
@@ -1601,4 +1601,4 @@ function createVatsimbriefHelperControlWindow()
   end
 end
 
-add_macro("Vatsimbrief Helper Control", "createVatsimbriefHelperControlWindow()", "destroyVatsimbriefHelperControlWindow()", "deactivate")
+add_macro("Vatsimbrief Helper Control", "createVatsimbriefHelperControlWindow()", "destroyVatsimbriefHelperControlWindow()", windowVisibilityToInitialMacroState(stringIsEmpty(getConfiguredSimbriefUserName())))
