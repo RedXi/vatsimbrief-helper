@@ -324,6 +324,44 @@ local function getConfiguredFlightPlanWindowVisibility(defaultValue)
   end
 end
 
+local function setConfiguredFlightPlanFontScaleSetting(value)
+  if VatsimbriefConfiguration.flightplan == nil then VatsimbriefConfiguration.flightplan = {} end
+  VatsimbriefConfiguration.flightplan.fontScale = string.format('%f', value)
+end
+
+local function getConfiguredFlightPlanFontScaleSettingDefault1()
+  local defaultValue = 1.0
+  if VatsimbriefConfiguration.flightplan == nil then VatsimbriefConfiguration.flightplan = {} end
+  if VatsimbriefConfiguration.flightplan.fontScale == nil then
+    return defaultValue
+  end
+  local number = tonumber(VatsimbriefConfiguration.flightplan.fontScale)
+  if number == nil then
+    return defaultValue
+  else
+    return number
+  end
+end
+
+local function setConfiguredAtcFontScaleSetting(value)
+  if VatsimbriefConfiguration.atc == nil then VatsimbriefConfiguration.atc = {} end
+  VatsimbriefConfiguration.atc.fontScale = string.format('%f', value)
+end
+
+local function getConfiguredAtcFontScaleSettingDefault1()
+  local defaultValue = 1.0
+  if VatsimbriefConfiguration.atc == nil then VatsimbriefConfiguration.atc = {} end
+  if VatsimbriefConfiguration.atc.fontScale == nil then
+    return defaultValue
+  end
+  local number = tonumber(VatsimbriefConfiguration.atc.fontScale)
+  if number == nil then
+    return defaultValue
+  else
+    return number
+  end
+end
+
 loadConfiguration() -- Initially load configuration synchronously so it's present below this line
 
 --
@@ -718,7 +756,7 @@ local function getSimbriefFlightplanFetchStatusMessageAndColor()
   else
     msg = "Unknown error '" .. (CurrentSimbriefFlightplanFetchStatus or "(none)") .. "'"
   end
-  msg = "Could not download flight plan from Simbrief: " .. msg .. "."
+  msg = "Could not download flight plan from Simbrief:\n" .. msg .. "."
   
   local color
   if CurrentSimbriefFlightplanFetchStatus.level == SimbriefFlightplanFetchStatusLevel.INFO then
@@ -869,7 +907,7 @@ end
 local function refreshFlightplanNow()
   copas.addthread(function()
     CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.DOWNLOADING
-    if getConfiguredSimbriefUserName() ~= nil then
+    if stringIsNotEmpty(getConfiguredSimbriefUserName()) then
       local url = "http://www.simbrief.com/api/xml.fetcher.php?username=" .. getConfiguredSimbriefUserName()
       performDefaultHttpGetRequest(url, processNewFlightplan, processFlightplanDownloadFailure)
     else
@@ -933,7 +971,7 @@ local function getVatsimDataFetchStatusMessageAndColor()
   else
     msg = "Unknown error '" .. (CurrentVatsimDataFetchStatus or "(none)") .. "'"
   end
-  msg = "Could not download VATSIM data: " .. msg .. "."
+  msg = "Could not download VATSIM data:\n" .. msg .. "."
   
   local color
   if CurrentVatsimDataFetchStatus.level == VatsimDataFetchStatusLevel.INFO then
@@ -1048,6 +1086,7 @@ local FlightplanWindow = {
   KeyWidth = 11, -- If changing this, also change max value length
   MaxValueLengthUntilBreak = 79, -- 90 characters minus keyWidth of 11
   FlightplanWindowValuePaddingLeft = '',
+  FontScale = getConfiguredFlightPlanFontScaleSettingDefault1() -- Cache font scale as it's needed during each draw.
 }
 FlightplanWindow.FlightplanWindowValuePaddingLeft = string.rep(' ', FlightplanWindow.KeyWidth)
 
@@ -1165,7 +1204,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
   end
   
   -- Paint
-  imgui.SetWindowFontScale(1.0)
+  imgui.SetWindowFontScale(FlightplanWindow.FontScale)
   
   if stringIsNotEmpty(FlightplanWindowFlightplanDownloadStatus) then
     imgui.PushStyleColor(imgui.constant.Col.Text, FlightplanWindowFlightplanDownloadStatusColor)
@@ -1177,7 +1216,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
     imgui.PushStyleColor(imgui.constant.Col.Text, colorA320Blue)
     imgui.TextUnformatted("Downloading flight plan ...")
     imgui.PopStyleColor()
-  else
+  elseif stringIsNotEmpty(FlightplanId) then
     imgui.TextUnformatted(FlightplanWindowAirports)
     imgui.TextUnformatted(FlightplanWindowRoute)
     if stringIsNotEmpty(FlightplanWindowAltRoute) then imgui.TextUnformatted(FlightplanWindowAltRoute) end
@@ -1206,7 +1245,8 @@ function createVatsimbriefHelperFlightplanWindow()
   setConfiguredFlightPlanWindowVisibility(true)
   saveConfiguration()
   refreshFlightplanNow()
-	vatsimbriefHelperFlightplanWindow = float_wnd_create(650, 210, 1, true)
+  local scaling = getConfiguredFlightPlanFontScaleSettingDefault1()
+	vatsimbriefHelperFlightplanWindow = float_wnd_create(650 * scaling, 210 * scaling, 1, true)
 	float_wnd_set_title(vatsimbriefHelperFlightplanWindow, "Vatsimbrief Helper Flight Plan")
 	float_wnd_set_imgui_builder(vatsimbriefHelperFlightplanWindow, "buildVatsimbriefHelperFlightplanWindowCanvas")
 	float_wnd_set_onclose(vatsimbriefHelperFlightplanWindow, "destroyVatsimbriefHelperFlightplanWindow")
@@ -1219,7 +1259,8 @@ add_macro("Vatsimbrief Helper Flight Plan", "createVatsimbriefHelperFlightplanWi
 --
 
 local AtcWindow = {
-  WidthInCharacters = 63
+  WidthInCharacters = 63,
+  FontScale = getConfiguredAtcFontScaleSettingDefault1()
 }
 
 local AtcWindowLastRenderedFlightplanId = nil
@@ -1396,7 +1437,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
   end
 	
   -- Paint
-  imgui.SetWindowFontScale(1.0)
+  imgui.SetWindowFontScale(AtcWindow.FontScale)
   
   if stringIsNotEmpty(AtcWindowFlightplanDownloadStatus) then
     imgui.PushStyleColor(imgui.constant.Col.Text, AtcWindowFlightplanDownloadStatusColor)
@@ -1460,7 +1501,8 @@ function createVatsimbriefHelperAtcWindow()
   setConfiguredAtcWindowVisibility(true)
   refreshVatsimDataNow()
   saveConfiguration()
-	vatsimbriefHelperAtcWindow = float_wnd_create(560, 90, 1, true)
+  local scaling = getConfiguredAtcFontScaleSettingDefault1()
+	vatsimbriefHelperAtcWindow = float_wnd_create(560 * scaling, 90 * scaling, 1, true)
 	updateAtcWindowTitle()
 	float_wnd_set_imgui_builder(vatsimbriefHelperAtcWindow, "buildVatsimbriefHelperAtcWindowCanvas")
 	float_wnd_set_onclose(vatsimbriefHelperAtcWindow, "destroyVatsimbriefHelperAtcWindow")
@@ -1479,7 +1521,7 @@ local menuItem = MENU_ITEM_OVERVIEW
 
 local MainMenuOptions = {
   ["General"] = MENU_ITEM_OVERVIEW,
-  ["Flightplan Download"] = MENU_ITEM_FLIGHTPLAN_DOWNLOAD
+  ["Flight Plan Download"] = MENU_ITEM_FLIGHTPLAN_DOWNLOAD
 }
 
 function buildVatsimbriefHelperControlWindowCanvas()
@@ -1503,8 +1545,8 @@ function buildVatsimbriefHelperControlWindowCanvas()
   imgui.Separator()
   
   -- Simbrief user name is so important for us that we want to show it very prominently in case user attention is required
-  local userNameInvalid = CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus
-    or INVALID_USER_NAME or CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NO_SIMBRIEF_USER_ID_ENTERED
+  local userNameInvalid = CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.INVALID_USER_NAME
+    or CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.NO_SIMBRIEF_USER_ID_ENTERED
   if menuItem == MENU_ITEM_OVERVIEW or userNameInvalid then -- Always show setting when there's something wrong with the user name
     if userNameInvalid then
       imgui.PushStyleColor(imgui.constant.Col.Text, colorErr)
@@ -1526,7 +1568,10 @@ function buildVatsimbriefHelperControlWindowCanvas()
   
   -- Content canvas
   if menuItem == MENU_ITEM_OVERVIEW then
-    if imgui.Button("Reload Flight Plan") then
+    imgui.TextUnformatted("") -- Linebreak
+    imgui.TextUnformatted("Flight Plan")
+    imgui.TextUnformatted("  ") imgui.SameLine()
+    if imgui.Button(" Reload Flight Plan Now ") then
       clearFlightplan()
       refreshFlightplanNow()
     end
@@ -1539,18 +1584,35 @@ function buildVatsimbriefHelperControlWindowCanvas()
       setConfiguredAutoRefreshFlightPlanSetting(newVal)
       saveConfiguration()
     end ]]--
-    imgui.SameLine()
-    imgui.TextUnformatted(" | ")
-    imgui.SameLine()
-    if imgui.Button("Refresh ATC") then
+    imgui.TextUnformatted("  ") imgui.SameLine()
+    local changed3, newVal3 = imgui.SliderFloat("Flight Plan Font Scale", getConfiguredFlightPlanFontScaleSettingDefault1(), 0.5, 3, "Value: %.2f")
+    if changed3 then
+      setConfiguredFlightPlanFontScaleSetting(newVal3)
+      saveConfiguration()
+      FlightplanWindow.FontScale = newVal3
+    end
+    
+    imgui.TextUnformatted("") -- Linebreak
+    imgui.TextUnformatted("ATC")
+    imgui.TextUnformatted("  ") imgui.SameLine()
+    if imgui.Button(" Refresh ATC ") then
       clearAtcData()
       refreshVatsimDataNow()
     end
     imgui.SameLine()
-    local changed2, newVal2 = imgui.Checkbox("Auto Refresh", getConfiguredAutoRefreshAtcSettingDefaultTrue())
+    imgui.TextUnformatted(" - ")
+    imgui.SameLine()
+    local changed2, newVal2 = imgui.Checkbox("Enable Auto Refresh", getConfiguredAutoRefreshAtcSettingDefaultTrue())
     if changed2 then
       setConfiguredAutoRefreshAtcSetting(newVal2)
       saveConfiguration()
+    end
+    imgui.TextUnformatted("  ") imgui.SameLine()
+    local changed4, newVal4 = imgui.SliderFloat("ATC Font Scale", getConfiguredAtcFontScaleSettingDefault1(), 0.5, 3, "Value: %.2f")
+    if changed4 then
+      setConfiguredAtcFontScaleSetting(newVal4)
+      saveConfiguration()
+      AtcWindow.FontScale = newVal4
     end
   elseif menuItem == MENU_ITEM_FLIGHTPLAN_DOWNLOAD then
     if FlightplanId == nil then
