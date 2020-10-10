@@ -150,6 +150,18 @@ for i = 1, #licensesOfDependencies do
     :format(licensesOfDependencies[i][1], licensesOfDependencies[i][2], licensesOfDependencies[i][3]))
 end
 
+-- Track opened windows centrally
+local WindowStates = {}
+local function trackWindowOpen(windowName, isOpen)
+  WindowStates[windowName] = isOpen
+end
+local function atLeastOneWindowIsOpen()
+  for windowName, isOpen in pairs(WindowStates) do
+    if isOpen then return true end
+  end
+  return false
+end
+
 --
 -- Configuration handling
 --
@@ -1057,6 +1069,8 @@ function tryVatsimbriefHelperInit()
 		return
 	end
 	
+  -- Initialization tasks go here ...
+  
 	vatsimbriefHelperIsInitialized = true
 end
 
@@ -1104,8 +1118,8 @@ function timespanToHm(s)
   local hrs = math.floor(seconds / (60 * 60))
   seconds = seconds % hrs * 60 * 60
   local mins = math.floor(seconds / 60)
-  seconds = seconds % mins * 60
-  local secs = math.floor(seconds)
+  --seconds = seconds % mins * 60
+  --local secs = math.floor(seconds)
   return ("%02d:%02d"):format(hrs, mins)
 end
 
@@ -1237,22 +1251,38 @@ function destroyVatsimbriefHelperFlightplanWindow()
     saveConfiguration()
 		float_wnd_destroy(vatsimbriefHelperFlightplanWindow)
     vatsimbriefHelperFlightplanWindow = nil
+    trackWindowOpen("flight-plan", false)
 	end
 end
 
 function createVatsimbriefHelperFlightplanWindow()
   tryVatsimbriefHelperInit()
-  setConfiguredFlightPlanWindowVisibility(true)
-  saveConfiguration()
-  refreshFlightplanNow()
-  local scaling = getConfiguredFlightPlanFontScaleSettingDefault1()
-	vatsimbriefHelperFlightplanWindow = float_wnd_create(650 * scaling, 210 * scaling, 1, true)
-	float_wnd_set_title(vatsimbriefHelperFlightplanWindow, "Vatsimbrief Helper Flight Plan")
-	float_wnd_set_imgui_builder(vatsimbriefHelperFlightplanWindow, "buildVatsimbriefHelperFlightplanWindowCanvas")
-	float_wnd_set_onclose(vatsimbriefHelperFlightplanWindow, "destroyVatsimbriefHelperFlightplanWindow")
+  if vatsimbriefHelperFlightplanWindow == nil then -- "Singleton window"
+    setConfiguredFlightPlanWindowVisibility(true)
+    saveConfiguration()
+    refreshFlightplanNow()
+    local scaling = getConfiguredFlightPlanFontScaleSettingDefault1()
+    vatsimbriefHelperFlightplanWindow = float_wnd_create(650 * scaling, 210 * scaling, 1, true)
+    float_wnd_set_title(vatsimbriefHelperFlightplanWindow, "Vatsimbrief Helper Flight Plan")
+    float_wnd_set_imgui_builder(vatsimbriefHelperFlightplanWindow, "buildVatsimbriefHelperFlightplanWindowCanvas")
+    float_wnd_set_onclose(vatsimbriefHelperFlightplanWindow, "destroyVatsimbriefHelperFlightplanWindow")
+    trackWindowOpen("flight-plan", true)
+  end
 end
 
-add_macro("Vatsimbrief Helper Flight Plan", "createVatsimbriefHelperFlightplanWindow()", "destroyVatsimbriefHelperFlightplanWindow()", windowVisibilityToInitialMacroState(getConfiguredFlightPlanWindowVisibility(true)))
+function showVatsimbriefHelperFlightplanWindow(value)
+	if value and vatsimbriefHelperFlightplanWindow == nil then
+    createVatsimbriefHelperFlightplanWindow()
+  elseif not value and vatsimbriefHelperFlightplanWindow ~= nil then
+    destroyVatsimbriefHelperFlightplanWindow()
+  end
+end
+
+function toggleFlightPlanWindow(value) showVatsimbriefHelperFlightplanWindow(vatsimbriefHelperFlightplanWindow == nil) end
+
+local function initiallyShowFlightPlanWindow() return getConfiguredFlightPlanWindowVisibility(true) end
+
+add_macro("Vatsimbrief Helper Flight Plan", "createVatsimbriefHelperFlightplanWindow()", "destroyVatsimbriefHelperFlightplanWindow()", windowVisibilityToInitialMacroState(initiallyShowFlightPlanWindow()))
 
 --
 -- ATC UI handling
@@ -1493,22 +1523,38 @@ function destroyVatsimbriefHelperAtcWindow()
     saveConfiguration()
 		float_wnd_destroy(vatsimbriefHelperAtcWindow)
     vatsimbriefHelperAtcWindow = nil
+    trackWindowOpen("atc", false)
 	end
 end
 
 function createVatsimbriefHelperAtcWindow()
   tryVatsimbriefHelperInit()
-  setConfiguredAtcWindowVisibility(true)
-  refreshVatsimDataNow()
-  saveConfiguration()
-  local scaling = getConfiguredAtcFontScaleSettingDefault1()
-	vatsimbriefHelperAtcWindow = float_wnd_create(560 * scaling, 90 * scaling, 1, true)
-	updateAtcWindowTitle()
-	float_wnd_set_imgui_builder(vatsimbriefHelperAtcWindow, "buildVatsimbriefHelperAtcWindowCanvas")
-	float_wnd_set_onclose(vatsimbriefHelperAtcWindow, "destroyVatsimbriefHelperAtcWindow")
+  if vatsimbriefHelperAtcWindow == nil then -- "Singleton window"
+    setConfiguredAtcWindowVisibility(true)
+    refreshVatsimDataNow()
+    saveConfiguration()
+    local scaling = getConfiguredAtcFontScaleSettingDefault1()
+    vatsimbriefHelperAtcWindow = float_wnd_create(560 * scaling, 90 * scaling, 1, true)
+    updateAtcWindowTitle()
+    float_wnd_set_imgui_builder(vatsimbriefHelperAtcWindow, "buildVatsimbriefHelperAtcWindowCanvas")
+    float_wnd_set_onclose(vatsimbriefHelperAtcWindow, "destroyVatsimbriefHelperAtcWindow")
+    trackWindowOpen("atc", true)
+  end
 end
 
-add_macro("Vatsimbrief Helper ATC", "createVatsimbriefHelperAtcWindow()", "destroyVatsimbriefHelperAtcWindow()", windowVisibilityToInitialMacroState(getConfiguredAtcWindowVisibilityDefaultTrue()))
+function showVatsimbriefHelperAtcWindow(value)
+	if value and vatsimbriefHelperAtcWindow == nil then
+    createVatsimbriefHelperAtcWindow()
+  elseif not value and vatsimbriefHelperAtcWindow ~= nil then
+    destroyVatsimbriefHelperAtcWindow()
+  end
+end
+
+function toggleAtcWindow(value) showVatsimbriefHelperAtcWindow(vatsimbriefHelperAtcWindow == nil) end
+
+local function initiallyShowAtcWindow() return getConfiguredAtcWindowVisibilityDefaultTrue() end
+
+add_macro("Vatsimbrief Helper ATC", "createVatsimbriefHelperAtcWindow()", "destroyVatsimbriefHelperAtcWindow()", windowVisibilityToInitialMacroState(initiallyShowAtcWindow()))
 
 --
 -- Control UI handling
@@ -1595,7 +1641,7 @@ function buildVatsimbriefHelperControlWindowCanvas()
     imgui.TextUnformatted("") -- Linebreak
     imgui.TextUnformatted("ATC")
     imgui.TextUnformatted("  ") imgui.SameLine()
-    if imgui.Button(" Refresh ATC ") then
+    if imgui.Button(" Refresh ATC Data Now ") then
       clearAtcData()
       refreshVatsimDataNow()
     end
@@ -1650,6 +1696,7 @@ function destroyVatsimbriefHelperControlWindow()
   if vatsimbriefHelperControlWindow ~= nil then
     float_wnd_destroy(vatsimbriefHelperControlWindow)
     vatsimbriefHelperControlWindow = nil
+    trackWindowOpen("control", false)
   end
 end
 
@@ -1660,7 +1707,38 @@ function createVatsimbriefHelperControlWindow()
     float_wnd_set_title(vatsimbriefHelperControlWindow, "Vatsimbrief Helper Control")
     float_wnd_set_imgui_builder(vatsimbriefHelperControlWindow, "buildVatsimbriefHelperControlWindowCanvas")
     float_wnd_set_onclose(vatsimbriefHelperControlWindow, "destroyVatsimbriefHelperControlWindow")
+    trackWindowOpen("control", true)
   end
 end
 
-add_macro("Vatsimbrief Helper Control", "createVatsimbriefHelperControlWindow()", "destroyVatsimbriefHelperControlWindow()", windowVisibilityToInitialMacroState(stringIsEmpty(getConfiguredSimbriefUserName())))
+local function showVatsimbriefHelperControlWindow(value)
+  if value and vatsimbriefHelperControlWindow == nil then
+    createVatsimbriefHelperControlWindow()
+  elseif not value and vatsimbriefHelperControlWindow ~= nil then
+    destroyVatsimbriefHelperControlWindow()
+  end
+end
+
+function toggleControlWindow(value) showVatsimbriefHelperControlWindow(vatsimbriefHelperControlWindow == nil) end
+
+local function initiallyShowControlWindow() return stringIsEmpty(getConfiguredSimbriefUserName()) end
+
+add_macro("Vatsimbrief Helper Control", "createVatsimbriefHelperControlWindow()", "destroyVatsimbriefHelperControlWindow()", windowVisibilityToInitialMacroState(initiallyShowControlWindow()))
+
+--- Command bindings for opening / closing windows
+function toggleAllVatsimbriefWindows()
+  if atLeastOneWindowIsOpen() then
+    showVatsimbriefHelperControlWindow(false)
+    showVatsimbriefHelperFlightplanWindow(false)
+    showVatsimbriefHelperAtcWindow(false)
+  else
+    showVatsimbriefHelperControlWindow(true)
+    showVatsimbriefHelperFlightplanWindow(true)
+    showVatsimbriefHelperAtcWindow(initiallyShowAtcWindow()) -- Only show when necessary
+  end
+end
+
+create_command("FlyWithLua/Vatsimbrief Helper/ToggleWindows", "Toggle All Windows", "toggleAllVatsimbriefWindows()", "", "")
+create_command("FlyWithLua/Vatsimbrief Helper/ToggleFlightPlanWindow", "Toggle Flight Plan", "toggleFlightPlanWindow()", "", "")
+create_command("FlyWithLua/Vatsimbrief Helper/ToggleAtcWindow", "Toggle ATC Window", "toggleAtcWindow()", "", "")
+create_command("FlyWithLua/Vatsimbrief Helper/ToggleControlWindow", "Toggle Control Window", "toggleControlWindow()", "", "")
