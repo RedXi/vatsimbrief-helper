@@ -163,220 +163,6 @@ local function atLeastOneWindowIsOpen()
 end
 
 --
--- Configuration handling
---
-
-local LIP = require("LIP")
-
-local ConfigurationFilePath = SCRIPT_DIRECTORY .. "vatsimbrief-helper.ini"
-
-local VatsimbriefConfiguration = {}
-
-local function fileExists(name)
-  local f = io.open(name, "r")
-  if f ~= nil then
-    io.close(f)
-    return true
-  else
-    return false
-  end
-end
-
-local function loadConfiguration()
-  if fileExists(ConfigurationFilePath) then
-    VatsimbriefConfiguration = LIP.load(ConfigurationFilePath);
-    logMsg(("Vatsimbrief configuration file '%s' loaded."):format(ConfigurationFilePath))
-  else
-    logMsg(("Vatsimbrief configuration file '%s' missing! Running without configuration settings.")
-      :format(ConfigurationFilePath))
-  end
-end
-
-local function saveConfiguration()
-  LIP.save(ConfigurationFilePath, VatsimbriefConfiguration);
-end
-
-local function getConfiguredSimbriefUserName()
-  if VatsimbriefConfiguration.simbrief ~= nil and stringIsNotEmpty(VatsimbriefConfiguration.simbrief.username) then
-    return trim(VatsimbriefConfiguration.simbrief.username)
-  else
-    return ''
-  end
-end
-
-local function setConfiguredUserName(value)
-  if VatsimbriefConfiguration.simbrief == nil then VatsimbriefConfiguration.simbrief = {} end
-  VatsimbriefConfiguration.simbrief.username = trim(value)
-end
-
-local function getConfiguredFlightPlanFilesForDownloadAsList()
-  local result = {}
-  if VatsimbriefConfiguration.simbrief ~= nil then
-    local i = 1
-    while true do
-      local nextItem = VatsimbriefConfiguration.simbrief['flightPlanTypesForDownload' .. i]
-      if nextItem == nil then break end
-      table.insert(result, nextItem)
-      i = i + 1
-    end
-  end
-  return result
-end
-
-local function setConfiguredFlightPlanFilesForDownloadAsList(value)
-  if VatsimbriefConfiguration.simbrief == nil then VatsimbriefConfiguration.simbrief = {} end
-  for i = 1, #value do VatsimbriefConfiguration.simbrief['flightPlanTypesForDownload' .. i] = value[i] end
-end
-
-local function setConfiguredDeleteOldFlightPlansSetting(value)
-  if VatsimbriefConfiguration.simbrief == nil then VatsimbriefConfiguration.simbrief = {} end
-  local strValue
-  if value then strValue = 'yes' else strValue = 'no' end
-  VatsimbriefConfiguration.simbrief.deleteDownloadedFlightPlans = strValue
-end
-
-local function getConfiguredDeleteOldFlightPlansSetting()
-  -- Unless it's clearly a YES, do NOT return to delete anything! Also in case the removal crashes on the system. We don't want that.
-  
-  if VatsimbriefConfiguration.simbrief == nil then VatsimbriefConfiguration.simbrief = {} end
-  if VatsimbriefConfiguration.simbrief.deleteDownloadedFlightPlans == nil then
-    return false
-  end
-  if trim(VatsimbriefConfiguration.simbrief.deleteDownloadedFlightPlans) == 'yes' then
-    return true
-  else
-    return false
-  end
-end
-
-local function setConfiguredAutoRefreshAtcSetting(value)
-  if VatsimbriefConfiguration.atc == nil then VatsimbriefConfiguration.atc = {} end
-  local strValue
-  if value then strValue = 'yes' else strValue = 'no' end
-  VatsimbriefConfiguration.atc.autoRefresh = strValue
-end
-
-local function getConfiguredAutoRefreshAtcSettingDefaultTrue()
-  local defaultValue = true
-  if VatsimbriefConfiguration.atc == nil then VatsimbriefConfiguration.atc = {} end
-  if VatsimbriefConfiguration.atc.autoRefresh == nil then
-    return defaultValue
-  end
-  if trim(VatsimbriefConfiguration.atc.autoRefresh) == 'yes' then
-    return true
-  elseif trim(VatsimbriefConfiguration.atc.autoRefresh) == 'no' then
-    return false
-  else
-    return defaultValue
-  end
-end
-
-local function setConfiguredAutoRefreshFlightPlanSetting(value)
-  if VatsimbriefConfiguration.flightplan == nil then VatsimbriefConfiguration.flightplan = {} end
-  local strValue
-  if value then strValue = 'yes' else strValue = 'no' end
-  VatsimbriefConfiguration.flightplan.autoRefresh = strValue
-end
-
-local function getConfiguredAutoRefreshFlightPlanSettingDefaultFalse()
-  local defaultValue = false
-  if VatsimbriefConfiguration.flightplan == nil then VatsimbriefConfiguration.flightplan = {} end
-  if VatsimbriefConfiguration.flightplan.autoRefresh == nil then
-    return defaultValue
-  end
-  if trim(VatsimbriefConfiguration.flightplan.autoRefresh) == 'yes' then
-    return true
-  elseif trim(VatsimbriefConfiguration.flightplan.autoRefresh) == 'no' then
-    return false
-  else
-    return defaultValue
-  end
-end
-
-local function setConfiguredAtcWindowVisibility(value)
-  if VatsimbriefConfiguration.atc == nil then VatsimbriefConfiguration.atc = {} end
-  local strValue
-  if value then strValue = 'visible' else strValue = 'hidden' end
-  VatsimbriefConfiguration.atc.windowVisibility = strValue
-end
-
-local function getConfiguredAtcWindowVisibilityDefaultTrue()
-  local defaultValue = true
-  if VatsimbriefConfiguration.atc == nil then VatsimbriefConfiguration.atc = {} end
-  if VatsimbriefConfiguration.atc.windowVisibility == nil then
-    return defaultValue
-  end
-  if trim(VatsimbriefConfiguration.atc.windowVisibility) == 'visible' then
-    return true
-  elseif trim(VatsimbriefConfiguration.atc.windowVisibility) == 'hidden' then
-    return false
-  else
-    return defaultValue
-  end
-end
-
-local function setConfiguredFlightPlanWindowVisibility(value)
-  if VatsimbriefConfiguration.flightplan == nil then VatsimbriefConfiguration.flightplan = {} end
-  local strValue
-  if value then strValue = 'visible' else strValue = 'hidden' end
-  VatsimbriefConfiguration.flightplan.windowVisibility = strValue
-end
-
-local function getConfiguredFlightPlanWindowVisibility(defaultValue)
-  if VatsimbriefConfiguration.flightplan == nil then VatsimbriefConfiguration.flightplan = {} end
-  if VatsimbriefConfiguration.flightplan.windowVisibility == nil then
-    return defaultValue
-  end
-  if trim(VatsimbriefConfiguration.flightplan.windowVisibility) == 'visible' then
-    return true
-  elseif trim(VatsimbriefConfiguration.flightplan.windowVisibility) == 'hidden' then
-    return false
-  else
-    return defaultValue
-  end
-end
-
-local function setConfiguredFlightPlanFontScaleSetting(value)
-  if VatsimbriefConfiguration.flightplan == nil then VatsimbriefConfiguration.flightplan = {} end
-  VatsimbriefConfiguration.flightplan.fontScale = string.format('%f', value)
-end
-
-local function getConfiguredFlightPlanFontScaleSettingDefault1()
-  local defaultValue = 1.0
-  if VatsimbriefConfiguration.flightplan == nil then VatsimbriefConfiguration.flightplan = {} end
-  if VatsimbriefConfiguration.flightplan.fontScale == nil then
-    return defaultValue
-  end
-  local number = tonumber(VatsimbriefConfiguration.flightplan.fontScale)
-  if number == nil then
-    return defaultValue
-  else
-    return number
-  end
-end
-
-local function setConfiguredAtcFontScaleSetting(value)
-  if VatsimbriefConfiguration.atc == nil then VatsimbriefConfiguration.atc = {} end
-  VatsimbriefConfiguration.atc.fontScale = string.format('%f', value)
-end
-
-local function getConfiguredAtcFontScaleSettingDefault1()
-  local defaultValue = 1.0
-  if VatsimbriefConfiguration.atc == nil then VatsimbriefConfiguration.atc = {} end
-  if VatsimbriefConfiguration.atc.fontScale == nil then
-    return defaultValue
-  end
-  local number = tonumber(VatsimbriefConfiguration.atc.fontScale)
-  if number == nil then
-    return defaultValue
-  else
-    return number
-  end
-end
-
-loadConfiguration() -- Initially load configuration synchronously so it's present below this line
-
---
 -- Init concurrency
 --
 
@@ -401,6 +187,252 @@ function tickConcurrentTasks()
 end
 
 do_often("tickConcurrentTasks()")
+
+--
+-- Configuration handling
+--
+
+local LIP = require("LIP")
+
+local Configuration = {
+  FilePath = SCRIPT_DIRECTORY .. "vatsimbrief-helper.ini",
+  IsDirty = false,
+  DumpDirtyConfigTimer = nil,
+  File = {}
+}
+
+local function fileExists(name)
+  local f = io.open(name, "r")
+  if f ~= nil then
+    io.close(f)
+    return true
+  else
+    return false
+  end
+end
+
+local function loadConfiguration()
+  if fileExists(Configuration.FilePath) then
+    Configuration.File = LIP.load(Configuration.FilePath);
+    logMsg(("Vatsimbrief configuration file '%s' loaded."):format(Configuration.FilePath))
+  else
+    logMsg(("Vatsimbrief configuration file '%s' missing! Running without configuration settings.")
+      :format(Configuration.FilePath))
+  end
+end
+
+local function saveConfiguration()
+  LIP.save(Configuration.FilePath, Configuration.File)
+  Configuration.IsDirty = false
+end
+
+local function flagConfigurationDirty()
+  Configuration.IsDirty = true
+end
+
+Configuration.DumpDirtyConfigTimer = timer.new({
+  delay = 1, -- Should be at most the amount of time between changing settings and closing the plug in ...
+  recurring = true,
+  params = {},
+  initial_delay = 0,
+  callback = function(timer_obj, params) if Configuration.IsDirty then saveConfiguration() end end
+})
+
+local function setSetting(cat, key, value)
+  if Configuration.File[cat] == nil then Configuration.File[cat] = {} end
+  if type(value) == "string" then value = trim(value) end
+  Configuration.File[cat][key] = value
+end
+
+local function getSetting(cat, key, defaultValue)
+  if Configuration.File[cat] == nil then Configuration.File[cat] = {} end
+  if Configuration.File[cat][key] == nil then return defaultValue end
+  local value = Configuration.File[cat][key]
+  if type(value) == "string" then value = trim(value) end
+  return value
+end
+
+--- Specific configuration getters/setters
+
+local function getConfiguredSimbriefUserName()
+  if Configuration.File.simbrief ~= nil and stringIsNotEmpty(Configuration.File.simbrief.username) then
+    return trim(Configuration.File.simbrief.username)
+  else
+    return ''
+  end
+end
+
+local function setConfiguredUserName(value)
+  if Configuration.File.simbrief == nil then Configuration.File.simbrief = {} end
+  Configuration.File.simbrief.username = trim(value)
+end
+
+local function getConfiguredFlightPlanFilesForDownloadAsList()
+  local result = {}
+  if Configuration.File.simbrief ~= nil then
+    local i = 1
+    while true do
+      local nextItem = Configuration.File.simbrief['flightPlanTypesForDownload' .. i]
+      if nextItem == nil then break end
+      table.insert(result, nextItem)
+      i = i + 1
+    end
+  end
+  return result
+end
+
+local function setConfiguredFlightPlanFilesForDownloadAsList(value)
+  if Configuration.File.simbrief == nil then Configuration.File.simbrief = {} end
+  for i = 1, #value do Configuration.File.simbrief['flightPlanTypesForDownload' .. i] = value[i] end
+end
+
+local function setConfiguredDeleteOldFlightPlansSetting(value)
+  if Configuration.File.simbrief == nil then Configuration.File.simbrief = {} end
+  local strValue
+  if value then strValue = 'yes' else strValue = 'no' end
+  Configuration.File.simbrief.deleteDownloadedFlightPlans = strValue
+end
+
+local function getConfiguredDeleteOldFlightPlansSetting()
+  -- Unless it's clearly a YES, do NOT return to delete anything! Also in case the removal crashes on the system. We don't want that.
+  
+  if Configuration.File.simbrief == nil then Configuration.File.simbrief = {} end
+  if Configuration.File.simbrief.deleteDownloadedFlightPlans == nil then
+    return false
+  end
+  if trim(Configuration.File.simbrief.deleteDownloadedFlightPlans) == 'yes' then
+    return true
+  else
+    return false
+  end
+end
+
+local function setConfiguredAutoRefreshAtcSetting(value)
+  if Configuration.File.atc == nil then Configuration.File.atc = {} end
+  local strValue
+  if value then strValue = 'yes' else strValue = 'no' end
+  Configuration.File.atc.autoRefresh = strValue
+end
+
+local function getConfiguredAutoRefreshAtcSettingDefaultTrue()
+  local defaultValue = true
+  if Configuration.File.atc == nil then Configuration.File.atc = {} end
+  if Configuration.File.atc.autoRefresh == nil then
+    return defaultValue
+  end
+  if trim(Configuration.File.atc.autoRefresh) == 'yes' then
+    return true
+  elseif trim(Configuration.File.atc.autoRefresh) == 'no' then
+    return false
+  else
+    return defaultValue
+  end
+end
+
+local function setConfiguredAutoRefreshFlightPlanSetting(value)
+  if Configuration.File.flightplan == nil then Configuration.File.flightplan = {} end
+  local strValue
+  if value then strValue = 'yes' else strValue = 'no' end
+  Configuration.File.flightplan.autoRefresh = strValue
+end
+
+local function getConfiguredAutoRefreshFlightPlanSettingDefaultFalse()
+  local defaultValue = false
+  if Configuration.File.flightplan == nil then Configuration.File.flightplan = {} end
+  if Configuration.File.flightplan.autoRefresh == nil then
+    return defaultValue
+  end
+  if trim(Configuration.File.flightplan.autoRefresh) == 'yes' then
+    return true
+  elseif trim(Configuration.File.flightplan.autoRefresh) == 'no' then
+    return false
+  else
+    return defaultValue
+  end
+end
+
+local function setConfiguredAtcWindowVisibility(value)
+  if Configuration.File.atc == nil then Configuration.File.atc = {} end
+  local strValue
+  if value then strValue = 'visible' else strValue = 'hidden' end
+  Configuration.File.atc.windowVisibility = strValue
+end
+
+local function getConfiguredAtcWindowVisibilityDefaultTrue()
+  local defaultValue = true
+  if Configuration.File.atc == nil then Configuration.File.atc = {} end
+  if Configuration.File.atc.windowVisibility == nil then
+    return defaultValue
+  end
+  if trim(Configuration.File.atc.windowVisibility) == 'visible' then
+    return true
+  elseif trim(Configuration.File.atc.windowVisibility) == 'hidden' then
+    return false
+  else
+    return defaultValue
+  end
+end
+
+local function setConfiguredFlightPlanWindowVisibility(value)
+  if Configuration.File.flightplan == nil then Configuration.File.flightplan = {} end
+  local strValue
+  if value then strValue = 'visible' else strValue = 'hidden' end
+  Configuration.File.flightplan.windowVisibility = strValue
+end
+
+local function getConfiguredFlightPlanWindowVisibility(defaultValue)
+  if Configuration.File.flightplan == nil then Configuration.File.flightplan = {} end
+  if Configuration.File.flightplan.windowVisibility == nil then
+    return defaultValue
+  end
+  if trim(Configuration.File.flightplan.windowVisibility) == 'visible' then
+    return true
+  elseif trim(Configuration.File.flightplan.windowVisibility) == 'hidden' then
+    return false
+  else
+    return defaultValue
+  end
+end
+
+local function setConfiguredFlightPlanFontScaleSetting(value)
+  if Configuration.File.flightplan == nil then Configuration.File.flightplan = {} end
+  Configuration.File.flightplan.fontScale = string.format('%f', value)
+end
+
+local function getConfiguredFlightPlanFontScaleSettingDefault1()
+  local defaultValue = 1.0
+  if Configuration.File.flightplan == nil then Configuration.File.flightplan = {} end
+  if Configuration.File.flightplan.fontScale == nil then
+    return defaultValue
+  end
+  local number = tonumber(Configuration.File.flightplan.fontScale)
+  if number == nil then
+    return defaultValue
+  else
+    return number
+  end
+end
+
+local function setConfiguredAtcFontScaleSetting(value)
+  if Configuration.File.atc == nil then Configuration.File.atc = {} end
+  Configuration.File.atc.fontScale = string.format('%f', value)
+end
+
+local function getConfiguredAtcFontScaleSettingDefault1()
+  local defaultValue = 1.0
+  if Configuration.File.atc == nil then Configuration.File.atc = {} end
+  if Configuration.File.atc.fontScale == nil then
+    return defaultValue
+  end
+  local number = tonumber(Configuration.File.atc.fontScale)
+  if number == nil then
+    return defaultValue
+  else
+    return number
+  end
+end
+
+loadConfiguration() -- Initially load configuration synchronously so it's present below this line
 
 --
 -- Async HTTP
@@ -1634,7 +1666,7 @@ function buildVatsimbriefHelperControlWindowCanvas()
     local changed3, newVal3 = imgui.SliderFloat("Flight Plan Font Scale", getConfiguredFlightPlanFontScaleSettingDefault1(), 0.5, 3, "Value: %.2f")
     if changed3 then
       setConfiguredFlightPlanFontScaleSetting(newVal3)
-      saveConfiguration()
+      flagConfigurationDirty() -- Don't save immediately to reduce disk load
       FlightplanWindow.FontScale = newVal3
     end
     
@@ -1654,10 +1686,10 @@ function buildVatsimbriefHelperControlWindowCanvas()
       saveConfiguration()
     end
     imgui.TextUnformatted("  ") imgui.SameLine()
-    local changed4, newVal4 = imgui.SliderFloat("ATC Font Scale", getConfiguredAtcFontScaleSettingDefault1(), 0.5, 3, "Value: %.2f")
+    local changed4, newVal4 = imgui.SliderFloat("ATC Data Font Scale", getConfiguredAtcFontScaleSettingDefault1(), 0.5, 3, "Value: %.2f")
     if changed4 then
       setConfiguredAtcFontScaleSetting(newVal4)
-      saveConfiguration()
+      flagConfigurationDirty() -- Don't save immediately to reduce disk load
       AtcWindow.FontScale = newVal4
     end
   elseif menuItem == MENU_ITEM_FLIGHTPLAN_DOWNLOAD then
