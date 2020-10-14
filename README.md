@@ -28,7 +28,7 @@ It solves major issues that VR pilots usually face:
   * `Vatsimbrief Helper ATC`: Opens/closes a window showing relevant ATC frequencies that will refresh every minute, if "Auto Refresh" is enabled.
   * `Vatsimbrief Helper Control`: Opens/closes a window for setting the Simbrief username, reloading the flight plan or ATC data manually, and configuring the download of flight plans. The settings window should be closed during the flight. It shows a big lumpy to simplify user interaction in VR.
 * If an attribute has two values separated by `/`, the left value refers to the **destination** and the right one to the **alternate**
-* If you find that the font in a window is too small, scale it up by dragging the bottom right corner of each window.
+* If you find that the font in a window is too small, scale it up by dragging the bottom right corner of each window. If you permanently want to adjust the font size, there's a setting in the settings menu. The window will automatically adjust to the configured font size the next time it opens.
 * Note that the visibility of windows will be saved between sessions. To restore a window, reopen it manually in the menu `Plugins / FlyWithLua / FlyWithLua Macros`.
 
 **Happy Flying!**
