@@ -9,7 +9,7 @@ It solves major issues that VR pilots usually face:
 * A printed flight plan can not be taken into VR. And even if the resolution of the VR device allows for, scrolling through tiny Simbrief flight plan fonts is usually very exhausting. Instead, there is a window showing the most important information from the flight plan, just enough to operate and monitor the flight.
 * VATSIM frequencies can not be obtained from official charts (e.g. Navigraph). Also, taking notes in VR takes a lot of time, which easily distresses pilots. The plugin provides a window showing airport related frequencies.
 * Air traffic control stations are highly volatile. When using the plugin it can be avoided to approach an unmonitored airport. Instead, pilots can divert to their alternate where there are air traffic controllers on service.
-* For Co-Op / Multi Crew VATSIM flights, depending on who's going to file the flight plan, it's annoying to share the corresponding VATSIM client file over and over again. Especially when performing last minute changes. Therefore, the download can now performed automatically along with displaying the flight plan in the cockpit.
+* For Co-Op / Multi Crew VATSIM flights, depending on who's going to file the flight plan, it's annoying to share the corresponding VATSIM client-specific flight plan over and over again. Especially when performing last minute changes. Therefore, the download can now be performed automatically along with displaying the flight plan in the cockpit.
 
 ![All windows](screenshots/overview.png "All windows")
 
