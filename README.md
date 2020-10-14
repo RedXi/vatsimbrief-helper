@@ -17,7 +17,7 @@ It solves major issues that VR pilots usually face:
 
 * Install FlyWithLua plugin: https://forums.x-plane.org/index.php?/files/file/38445-flywithlua-ng-next-generation-edition-for-x-plane-11-win-lin-mac/
 * Download the [latest release of this plugin](https://github.com/RedXi/vatsimbrief-helper/releases/latest)
-* Extract the folders in the zip-File to `<X-Plane-Directory>/Resources/plugins/FlyWithLua` and, if asked, overwrite existing files
+* Extract *all* folders in the zip-File to `<X-Plane-Directory>/Resources/plugins/FlyWithLua/` and, if asked, overwrite existing files. It's **not** sufficient to put the script `vatsimbrief-helper.lua` into the `scripts`-Directory!
 * During first launch, a configuration window will show automatically. Enter your *Simbrief Username* and press *Set*.
 
 ## Usage
