@@ -18,7 +18,7 @@ if exist %RELEASE_PACKAGE_FOLDER_PATH% (
 
 mkdir %RELEASE_PACKAGE_FOLDER_PATH%
 
-%NSIS_EXECUTABLE% "/XOutFile ..\%RELEASE_PACKAGE_FOLDER_PATH%\%1-%TAG%-%COMMIT_HASH%.exe" build\generate-installer.nsi
+%NSIS_EXECUTABLE% "/XOutFile ..\%RELEASE_PACKAGE_FOLDER_PATH%\%RELEASE_FILE_NAME_PREFIX%-%TAG%-%COMMIT_HASH%.exe" build\generate-installer.nsi
 if %ERRORLEVEL% GTR 0 (
     exit /b
 )
@@ -31,4 +31,4 @@ xcopy /Y /S /E modules\* %RELEASE_PACKAGE_FOLDER_PATH%\Modules\*
 
 cd %RELEASE_PACKAGE_FOLDER_PATH%
 
-%SEVEN_ZIP_EXECUTABLE% a -r %1-%TAG%-%COMMIT_HASH%.zip Modules Scripts
+%SEVEN_ZIP_EXECUTABLE% a -r %RELEASE_FILE_NAME_PREFIX%-%TAG%-%COMMIT_HASH%.zip Modules Scripts

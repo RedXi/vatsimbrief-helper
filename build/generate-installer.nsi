@@ -1,4 +1,4 @@
-Name "Vatsimbrief Helper $%TAG% ($%COMMIT_HASH%)"
+Name "$%READABLE_SCRIPT_NAME% $%TAG% ($%COMMIT_HASH%)"
 RequestExecutionLevel admin
 Unicode True
 InstallDir "C:\X-Plane Folder"
@@ -14,14 +14,14 @@ Function checkDirectoryFunction
 	LuaInstallationFound:
 FunctionEnd
 
-Section "VHF Helper Main Script (required)"
+Section "$%READABLE_SCRIPT_NAME% (required)"
 	SectionIn RO
 	SetOutPath $INSTDIR\Resources\plugins\FlyWithLua\Scripts
 	
 	File ..\scripts\*.*
 SectionEnd
 
-Section "VHF Helper Dependencies"
+Section "Dependencies"
 	SetOutPath $INSTDIR\Resources\plugins\FlyWithLua\Modules
 	
 	File ..\modules\*.*
