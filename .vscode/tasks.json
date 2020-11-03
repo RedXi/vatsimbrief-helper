@@ -13,12 +13,6 @@
             "windows": {
                 "command": ".\\build\\pack_release.cmd"
             },
-            "args": [
-                {
-                    "quoting": "escape",
-                    "value": "vatsimbrief-helper"
-                }
-            ],
             "presentation": {
                 "echo": true,
                 "reveal": "always",
