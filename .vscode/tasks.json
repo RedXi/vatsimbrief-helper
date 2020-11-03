@@ -1,0 +1,107 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "packReleasePackage",
+            "dependsOn": [
+                "copyToXPlane"
+            ],
+            "type": "process",
+            "command": "No non-windows command available.",
+            "windows": {
+                "command": ".\\build\\pack_release.cmd"
+            },
+            "args": [
+                {
+                    "quoting": "escape",
+                    "value": "vatsimbrief-helper"
+                }
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            },
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "buildAndReloadFlyWithLua",
+            "dependsOn": [
+                "copyToXPlane"
+            ],
+            "type": "process",
+            "command": "No non-windows command available.",
+            "windows": {
+                "command": ".\\build\\reload_fly_with_lua.cmd"
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "copyToXPlane",
+            "dependsOn": [
+                "runAllTests"
+            ],
+            "type": "process",
+            "command": "No non-windows command available.",
+            "windows": {
+                "command": ".\\build\\copy_to_xplane.cmd"
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            },
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "runAllTests",
+            "type": "process",
+            "command": "No non-windows command available.",
+            "windows": {
+                "command": ".\\build\\run_script_in_folder_with_test_lua_paths.cmd"
+            },
+            "args": [
+                {
+                    "quoting": "escape",
+                    "value": "."
+                },
+                {
+                    "quoting": "escape",
+                    "value": "test\\test_suite.lua"
+                }
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "group": "build",
+            "problemMatcher": []
+        }
+    ]
+}
