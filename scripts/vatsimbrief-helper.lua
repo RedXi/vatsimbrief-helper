@@ -1437,14 +1437,24 @@ local refreshVatsimDataTimer =
 --
 
 local vatsimbriefHelperIsInitialized = false
+local lazyInitializationTries = 0
+
+local vatsimbriefHelperIsInitialized = false
 
 function tryVatsimbriefHelperInit()
   if vatsimbriefHelperIsInitialized then
     return
   end
 
-  -- Initialization tasks go here ...
+  if (lazyInitializationTries > 0 and lazyInitializationTries % 10 == 0) then
+    logMsg(("Vatsimbrief Helper: Lazy initialization is taking very long, tried %d times already."):format(lazyInitializationTries))
+  end
 
+  -- Initialization tasks go here ...
+  if (VHFHelperEventBus == nil) then return end
+  VHFHelperEventBus.on(VHFHelperEventOnFrequencyChanged, onVHFHelperFrequencyChanged)
+  
+  logMsg("Vatsimbrief Helper: Lazy initialization finished.")
   vatsimbriefHelperIsInitialized = true
 end
 
