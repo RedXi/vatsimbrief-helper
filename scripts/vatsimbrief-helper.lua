@@ -199,7 +199,7 @@ end
 
 local function loadConfiguration()
   if fileExists(Configuration.FilePath) then
-    Configuration.File = LIP.load(Configuration.FilePath);
+    Configuration.File = LIP.load(Configuration.FilePath)
     logMsg(("Vatsimbrief configuration file '%s' loaded."):format(Configuration.FilePath))
   else
     logMsg(("Vatsimbrief configuration file '%s' missing! Running without configuration settings.")
@@ -256,6 +256,7 @@ end
 local function getConfiguredFlightPlanDownloads()
   local types = {}
   local destFolders = {}
+  local destFileNames = {}
   if Configuration.File.flightplan ~= nil then
     local i = 1
     while true do
@@ -264,13 +265,15 @@ local function getConfiguredFlightPlanDownloads()
       table.insert(types, nextItem)
       local destFolder = Configuration.File.flightplan['flightPlanTypesForDownload' .. i .. 'DestFolder']
       if destFolder ~= nil then destFolders[nextItem] = destFolder end
+      local destFileName = Configuration.File.flightplan['flightPlanTypesForDownload' .. i .. 'DestFileName']
+      if destFileName ~= nil then destFileNames[nextItem] = destFileName end
       i = i + 1
     end
   end
-  return types, destFolders
+  return types, destFolders, destFileNames
 end
 
-local function setConfiguredFlightPlanDownloads(enabledTypes, mapTypesToDestFolder)
+local function setConfiguredFlightPlanDownloads(enabledTypes, mapTypesToDestFolder, mapTypesToDestFileName)
   if Configuration.File.flightplan == nil then Configuration.File.flightplan = {} end
   
   -- Remove previous entries
@@ -285,6 +288,9 @@ local function setConfiguredFlightPlanDownloads(enabledTypes, mapTypesToDestFold
     Configuration.File.flightplan['flightPlanTypesForDownload' .. i .. 'TypeName'] = enabledTypes[i]
     if mapTypesToDestFolder[enabledTypes[i]] ~= nil then
       Configuration.File.flightplan['flightPlanTypesForDownload' .. i .. 'DestFolder'] = mapTypesToDestFolder[enabledTypes[i]]
+    end
+    if mapTypesToDestFileName[enabledTypes[i]] ~= nil then
+      Configuration.File.flightplan['flightPlanTypesForDownload' .. i .. 'DestFileName'] = mapTypesToDestFileName[enabledTypes[i]]
     end
   end
 end
@@ -498,29 +504,66 @@ local function windowVisibilityToInitialMacroState(windowIsVisible) if windowIsV
 --
 
 local FlightPlanDownload = {
-  MapTypeToDestFolder = {}
+  WasTargetDirectoryCreated = false,
+  
+  -- Constants
+  Directory = nil,
+  RetryAfterSecs = nil,
+  
+  FilesForFlightplanId = '',
+  FilesBaseUrl = '', -- Base URL for download, e.g. "http://www.simbrief.com/ofp/flightplans/"
+  FileTypes = {}, -- Ordered array of types
+  FileTypesAndNames = {}, -- Hash: Type to file name on server
+  
+  -- User config
+  IsDownloadOfTypeEnabled = {}, -- FileType to "true" (enable download) or "false" (disable download)
+  MapTypeToDestFolder = {},
+  MapTypeToDestFileName = {},
+  
+  -- Download state
+  MapTypeToDownloadedFileName = {}, -- When download complete
+  SetOfDownloadingTypes = {}, -- When currently downloading, type name maps to "something"
+  MapTypeToAttemptTimestamp = {} -- Type name maps to timestamp of last attempt
 }
 
--- Constants
-local FlightplanDownloadDirectory = formatPathOsSpecific(SCRIPT_DIRECTORY .. "flight-plans" .. PATH_DELIMITER)
-local FlightplanDownloadRetryAfterSecs = 120.0 -- MUST be float to pass printf("%f", this)
--- Config from flightplan
-local FlightplanDownloadFilesForFlightplanId = ''
-local FlightplanDownloadFilesBaseUrl = '' -- Base URL for download, e.g. "http://www.simbrief.com/ofp/flightplans/"
-local FlightplanDownloadFileTypes = {} -- Ordered array of types
-local FlightplanDownloadFileTypesAndNames = {} -- Hash: Type to file name on server
-local FlightplanDownloadLocalFilesName = ''
--- User config
-local FlightplanDownloadConfig = {} -- FileType to "true" (enable download) or "false" (disable download)
-local tmp, tmp2 = getConfiguredFlightPlanDownloads()
-FlightPlanDownload.MapTypeToDestFolder = tmp2 -- When assigning directly, it gave some "redeclaration" warning... !?
-for i = 1, #tmp do FlightplanDownloadConfig[tmp[i]] = true end
--- Download state
-local FlightplanDownloadMapTypeToDownloadedFileName = {} -- When download complete
-local FlightplanDownloadSetOfDownloadingTypes = {} -- When currently downloading, type name maps to "something"
-local FlightplanDownloadMapTypeToAttemptTimestamp = {} -- Type name maps to timestamp of last attempt
+local FlightPlanDataForDownloadFileNames = {
+  o = nil, -- Origin ICAO
+  d = nil, -- Dest ICAO
+  a = nil, -- Date
+  t = nil -- Time
+}
 
-function scanDirectoryForFilesOnUnixLikeOs(directory)
+-- Init Constants
+FlightPlanDownload.Directory = formatPathOsSpecific(SCRIPT_DIRECTORY .. "flight-plans" .. PATH_DELIMITER)
+FlightPlanDownload.RetryAfterSecs = 120.0 -- MUST be float to pass printf("%f", this)
+-- Load User config
+local tmp, tmp2, tmp3 = getConfiguredFlightPlanDownloads()
+for i = 1, #tmp do FlightPlanDownload.IsDownloadOfTypeEnabled[tmp[i]] = true end
+FlightPlanDownload.MapTypeToDestFolder = tmp2 -- When assigning directly, it gave some "redeclaration" warning... !?
+FlightPlanDownload.MapTypeToDestFileName = tmp3 -- When assigning directly, it gave some "redeclaration" warning... !?
+
+local function initConversionOfConfiguredDestFileNames(originIcao, destIcao)
+  FlightPlanDataForDownloadFileNames.o = originIcao
+  FlightPlanDataForDownloadFileNames.d = destIcao
+  local t = os.time()
+  FlightPlanDataForDownloadFileNames.a = os.date("%Y%m%d", t)
+  FlightPlanDataForDownloadFileNames.t = os.date("%H%M%S", t)
+end
+
+local function resolveDestFileNamePlaceholder(placeholder)
+  local c = placeholder:sub(2) -- Remove leading '%'
+  if FlightPlanDataForDownloadFileNames[c] ~= nil then
+    return FlightPlanDataForDownloadFileNames[c]
+  else
+    return placeholder -- Identity replacement leaves original string unchanged
+  end
+end
+
+local function resolveConfiguredDestFileName(configuredDestFileName)
+  return string.gsub(configuredDestFileName, "%%%a", resolveDestFileNamePlaceholder)
+end
+
+local function scanDirectoryForFilesOnUnixLikeOs(directory)
   if direcory:find("'") ~= nil then return nil end -- It's stated that the procedure does not work in this case
   local t = {}
   local pfile = assert(io.popen(("find '%s' -maxdepth 1 -print0 -type f"):format(directory), 'r'))
@@ -530,7 +573,7 @@ function scanDirectoryForFilesOnUnixLikeOs(directory)
   return t
 end
 
-function scanDirectoryForFilesOnWindowsOs(directory)
+local function scanDirectoryForFilesOnWindowsOs(directory)
   local t = {}
   for f in io.popen([[dir "]] .. directory .. [[" /b]]):lines() do table.insert(t, f) end
   return t
@@ -539,12 +582,12 @@ end
 local function listDownloadedFlightPlans()
   local filenames
   if OS == OsType.WINDOWS then
-    filenames = scanDirectoryForFilesOnWindowsOs(FlightplanDownloadDirectory)
+    filenames = scanDirectoryForFilesOnWindowsOs(FlightPlanDownload.Directory)
   else -- OsType.UNIX_LIKE
-    filenames = scanDirectoryForFilesOnUnixLikeOs(FlightplanDownloadDirectory)
+    filenames = scanDirectoryForFilesOnUnixLikeOs(FlightPlanDownload.Directory)
   end
   if filenames == nil then return nil end
-  for i = 1, #filenames do filenames[i] = FlightplanDownloadDirectory .. filenames[i] end
+  for i = 1, #filenames do filenames[i] = FlightPlanDownload.Directory .. filenames[i] end
   return filenames
 end
 
@@ -579,16 +622,20 @@ end
 
 function processFlightPlanFileDownloadSuccess(httpRequest)
   local typeName = httpRequest.userData.typeName
-  if httpRequest.userData.flightPlanId ~= FlightplanDownloadFilesForFlightplanId then
+  if httpRequest.userData.flightPlanId ~= FlightPlanDownload.FilesForFlightplanId then
     logMsg("Discarding downloaded file of type '" .. httpRequest.userData.typeName .. "' for flight plan '" .. httpRequest.userData.flightPlanId .. "' as there's a new flight plan")
   else
     local destDir
     if FlightPlanDownload.MapTypeToDestFolder[typeName] ~= nil then
       destDir = FlightPlanDownload.MapTypeToDestFolder[typeName]
     else
-      destDir = FlightplanDownloadDirectory
+      destDir = FlightPlanDownload.Directory
     end
-    local targetFilePath = formatPathOsSpecific(pathWithSlash(destDir)) .. httpRequest.userData.targetFileName
+  
+    local fileNameFormat = defaultIfBlank(FlightPlanDownload.MapTypeToDestFileName[typeName], "%a_%t_%o-%d")
+
+    local targetFilePath = formatPathOsSpecific(pathWithSlash(destDir)) .. resolveConfiguredDestFileName(fileNameFormat) .. getExtensionOfFileName(FlightPlanDownload.FileTypesAndNames[typeName])
+
     local f = io.open(targetFilePath, "w")
     if io.type(f) ~= 'file' then
       logMsg("Failed to write data to file path: " .. targetFilePath)
@@ -596,57 +643,58 @@ function processFlightPlanFileDownloadSuccess(httpRequest)
       f:write(httpRequest.responseBody)
       f:close()
     end
-    FlightplanDownloadMapTypeToDownloadedFileName[typeName] = targetFilePath
-    FlightplanDownloadSetOfDownloadingTypes[typeName] = false
+    FlightPlanDownload.MapTypeToDownloadedFileName[typeName] = targetFilePath -- Mark type as downloaded (the file name is the "proof of download" :-)
+    FlightPlanDownload.SetOfDownloadingTypes[typeName] = false -- Mark download process as finished
     
     logMsg(("Download of file of type '%s' to '%s' for flight plan '%s' succeeded after '%.03fs'"):format(
-      typeName, targetFilePath, httpRequest.userData.flightPlanId, os.clock() - FlightplanDownloadMapTypeToAttemptTimestamp[typeName]))
+      typeName, targetFilePath, httpRequest.userData.flightPlanId, os.clock() - FlightPlanDownload.MapTypeToAttemptTimestamp[typeName]))
   end
 end
 
 function processFlightPlanFileDownloadFailure(httpRequest)
   local typeName = httpRequest.userData.typeName
-  if httpRequest.userData.flightPlanId ~= FlightplanDownloadFilesForFlightplanId then
+  if httpRequest.userData.flightPlanId ~= FlightPlanDownload.FilesForFlightplanId then
     logMsg("Discarding failure for download of file of type '" .. typeName .. "' for flight plan '" .. httpRequest.userData.flightPlanId .. "'")
   else
     logMsg(("Download of file of type '%s' for flight plan '%s' FAILED after '%.03fs' -- reattempting after '%.fs'"):format(
-      typeName, httpRequest.userData.flightPlanId, os.clock() - FlightplanDownloadMapTypeToAttemptTimestamp[typeName], FlightplanDownloadRetryAfterSecs))
-    FlightplanDownloadSetOfDownloadingTypes[typeName] = false
+      typeName, httpRequest.userData.flightPlanId, os.clock() - FlightPlanDownload.MapTypeToAttemptTimestamp[typeName], FlightPlanDownload.RetryAfterSecs))
+    FlightPlanDownload.SetOfDownloadingTypes[typeName] = false
   end
 end
 
 function downloadAllFlightplans()
-  for i = 1, #FlightplanDownloadFileTypes do -- For all types
-    local typeName = FlightplanDownloadFileTypes[i]
-    downloadFlightplan(typeName)
+  local now = 0 -- Optimization: Fetch only once, if necessary
+  if #FlightPlanDownload.FileTypes > 0 then now = os.clock() end
+  for i = 1, #FlightPlanDownload.FileTypes do -- For all types
+    local typeName = FlightPlanDownload.FileTypes[i]
+    downloadFlightplan(typeName, now, false)
   end
 end
 
-function downloadFlightplan(typeName)
-  local now = os.clock()
-  if FlightplanDownloadFilesForFlightplanId ~= nil then -- If there's a flightplan
-    if FlightplanDownloadMapTypeToDownloadedFileName[typeName] == nil then -- Not downloaded yet
-      if FlightplanDownloadConfig[typeName] == true then -- And download enabled by config
-        if FlightplanDownloadSetOfDownloadingTypes[typeName] ~= true then -- And download not already running
-          if FlightplanDownloadMapTypeToAttemptTimestamp[typeName] == nil -- And download was not attempted yet ...
-            or FlightplanDownloadMapTypeToAttemptTimestamp[typeName] < now - FlightplanDownloadRetryAfterSecs then -- ... or needs to be retried
-            FlightplanDownloadMapTypeToAttemptTimestamp[typeName] = now -- Save attempt timestamp for retrying later
-            FlightplanDownloadSetOfDownloadingTypes[typeName] = true -- Set immediately to prevent race conditions leading to multiple downloads launching. However, always remember to turn it off!
-            local url = FlightplanDownloadFilesBaseUrl .. "-" .. FlightplanDownloadFileTypesAndNames[typeName]
-            local targetFileName = FlightplanDownloadLocalFilesName .. "_" .. typeName .. getExtensionOfFileName(FlightplanDownloadFileTypesAndNames[typeName])
-            logMsg(("Download of file of type '%s' for flight plan '%s' starting"):format(typeName, FlightplanDownloadFilesForFlightplanId))
+function downloadFlightplan(typeName, now, forceAnotherDownload)
+  if now == nil then now = os.clock() end -- Singular call without timestamp
+  if FlightPlanDownload.FilesForFlightplanId ~= nil then -- If there's a flightplan
+    if FlightPlanDownload.IsDownloadOfTypeEnabled[typeName] == true then -- And download enabled by config
+      if forceAnotherDownload or FlightPlanDownload.MapTypeToDownloadedFileName[typeName] == nil then -- Type not downloaded yet
+        if forceAnotherDownload or FlightPlanDownload.SetOfDownloadingTypes[typeName] ~= true then -- And download not already running
+          if forceAnotherDownload or FlightPlanDownload.MapTypeToAttemptTimestamp[typeName] == nil -- And download was not attempted yet ...
+            or FlightPlanDownload.MapTypeToAttemptTimestamp[typeName] < now - FlightPlanDownload.RetryAfterSecs then -- ... or needs to be retried
+            FlightPlanDownload.MapTypeToAttemptTimestamp[typeName] = now -- Save attempt timestamp for retrying later
+            FlightPlanDownload.SetOfDownloadingTypes[typeName] = true -- Set immediately to prevent race conditions leading to multiple downloads launching. However, always remember to turn it off!
+            local url = FlightPlanDownload.FilesBaseUrl .. "-" .. FlightPlanDownload.FileTypesAndNames[typeName]
+            logMsg(("Download of file of type '%s' for flight plan '%s' starting"):format(typeName, FlightPlanDownload.FilesForFlightplanId))
             -- We observed that the official URL redirects
             --  from www.simbrief.com/ofp/flightplans/<TypeName>
             -- to
             --  http://www.simbrief.com/system/briefing.fmsdl.php?formatget=flightplans/<TypeName>
             -- HTTP 301 Redirects are unfortunately not working with this library. :-(
             -- Keep the final URL in hardcoded for now. Ouch.
-            if getExtensionOfFileName(FlightplanDownloadFileTypesAndNames[typeName]) ~= ".pdf" then
-              url = "http://www.simbrief.com/system/briefing.fmsdl.php?formatget=flightplans/" .. FlightplanDownloadFileTypesAndNames[typeName]
+            if getExtensionOfFileName(FlightPlanDownload.FileTypesAndNames[typeName]) ~= ".pdf" then
+              url = "http://www.simbrief.com/system/briefing.fmsdl.php?formatget=flightplans/" .. FlightPlanDownload.FileTypesAndNames[typeName]
             end
             copas.addthread(function() -- Note that the HTTP call must run in a copas thread, otherwise it will throw errors (something's always nil)
               performDefaultHttpGetRequest(url, processFlightPlanFileDownloadSuccess, processFlightPlanFileDownloadFailure,
-                { typeName = typeName, flightPlanId = FlightplanDownloadFilesForFlightplanId, targetFileName = targetFileName })
+                { typeName = typeName, flightPlanId = FlightPlanDownload.FilesForFlightplanId })
             end)
           end
         end
@@ -655,19 +703,30 @@ function downloadFlightplan(typeName)
   end
 end
 
+-- When a file plane has downloaded and the target path changed, it won't be downloaded as the flight plan actually WAS already downloaded.
+-- However, when changing the file name or path for the downloaded file plan, one would expect another download to happen.
+function downloadFlightPlanAgain(typeName)
+  logMsg("Requesting (another) download of flight plan type '" .. typeName .. "'")
+  downloadFlightplan(typeName, os.clock(), true)
+end
+
 local function isFlightplanFileDownloadEnabled(typeName)
   -- Note: Implement in at least O(log #TypeNames) as this method is called each frame during rendering of the configuration window
-  return FlightplanDownloadConfig[typeName] == true
+  return FlightPlanDownload.IsDownloadOfTypeEnabled[typeName] == true
 end
 
 local function setFlightplanFileDownloadEnabled(typeName, value)
-  if type(FlightplanDownloadConfig[typeName]) == 'boolean' then -- Means, type is valid
+  if type(FlightPlanDownload.IsDownloadOfTypeEnabled[typeName]) == 'boolean' then -- Means, type is valid
     local stringValue
     if value then stringValue = 'true' else stringValue = 'false' end
     logMsg(("Set flight plan file download for type '%s' to '%s'"):format(typeName, stringValue))
     
-    FlightplanDownloadConfig[typeName] = value
+    FlightPlanDownload.IsDownloadOfTypeEnabled[typeName] = value
   end
+end
+
+local function getFlightPlanDownloadDirectory(typeName)
+  return FlightPlanDownload.MapTypeToDestFolder[typeName]
 end
 
 local function setFlightPlanDownloadDirectory(typeName, value)
@@ -675,47 +734,59 @@ local function setFlightPlanDownloadDirectory(typeName, value)
   logMsg(("Set flight plan download directory for type '%s' to '%s'"):format(typeName, value))
 end
 
+local function getFlightPlanDownloadFileName(typeName)
+  return FlightPlanDownload.MapTypeToDestFileName[typeName]
+end
+
+local function setFlightPlanDownloadFileName(typeName, value)
+  FlightPlanDownload.MapTypeToDestFileName[typeName] = value
+  logMsg(("Set flight plan download file name for type '%s' to '%s'"):format(typeName, value))
+end
+
 local function saveFlightPlanFilesForDownload()
   local enabledFileTypes = {}
-  for fileType, downloadEnabled in pairs(FlightplanDownloadConfig) do
+  for fileType, downloadEnabled in pairs(FlightPlanDownload.IsDownloadOfTypeEnabled) do
     if downloadEnabled then
       logMsg(("Flight plan download for type '%s' enabled: '%s'"):format(fileType, booleanToYesNo(downloadEnabled)))
       table.insert(enabledFileTypes, fileType)
     end
   end
-  setConfiguredFlightPlanDownloads(enabledFileTypes, FlightPlanDownload.MapTypeToDestFolder)
+  setConfiguredFlightPlanDownloads(enabledFileTypes, FlightPlanDownload.MapTypeToDestFolder, FlightPlanDownload.MapTypeToDestFileName)
   saveConfiguration()
 end
 
-local function runFlightPlanDownloadForNewFlightPlan(flightPlanId, baseUrlForDownload, fileTypesAndNames, localFilesName)
+local function restartFlightPlanDownloads(flightPlanId, baseUrlForDownload, fileTypesAndNames)
   -- Store flightplan specific download information
-  FlightplanDownloadFilesForFlightplanId = flightPlanId
-  FlightplanDownloadFilesBaseUrl = baseUrlForDownload
-  if not stringEndsWith(FlightplanDownloadFilesBaseUrl, '/') then FlightplanDownloadFilesBaseUrl = FlightplanDownloadFilesBaseUrl .. '/' end
-  FlightplanDownloadFileTypesAndNames = fileTypesAndNames
-  FlightplanDownloadFileTypes = {}
-  FlightplanDownloadLocalFilesName = localFilesName
-  for fileType, fileName in pairs(fileTypesAndNames) do table.insert(FlightplanDownloadFileTypes, fileType) end
+  FlightPlanDownload.FilesForFlightplanId = flightPlanId
+  FlightPlanDownload.FilesBaseUrl = baseUrlForDownload
+  if not stringEndsWith(FlightPlanDownload.FilesBaseUrl, '/') then FlightPlanDownload.FilesBaseUrl = FlightPlanDownload.FilesBaseUrl .. '/' end
+  FlightPlanDownload.FileTypesAndNames = fileTypesAndNames
+  FlightPlanDownload.FileTypes = {}
+  for fileType, fileName in pairs(fileTypesAndNames) do table.insert(FlightPlanDownload.FileTypes, fileType) end
   
   -- Update config: Add new types from the flight plan and remove those that disappeared from the flight plan for some reason...
   local configNew = {}
   for fileType, fileName in pairs(fileTypesAndNames) do configNew[fileType] = isFlightplanFileDownloadEnabled(fileType) end
-  FlightplanDownloadConfig = configNew
+  FlightPlanDownload.IsDownloadOfTypeEnabled = configNew
   
   -- Invalidate old flightplans in memory
-  FlightplanDownloadMapTypeToDownloadedFileName = {}
-  FlightplanDownloadSetOfDownloadingTypes = {}
-  FlightplanDownloadMapTypeToAttemptTimestamp = {}
+  FlightPlanDownload.MapTypeToDownloadedFileName = {}
+  FlightPlanDownload.SetOfDownloadingTypes = {}
+  FlightPlanDownload.MapTypeToAttemptTimestamp = {}
   
   -- Create target directory of downloaded flight plans
-  os.execute("mkdir " .. FlightplanDownloadDirectory)
+  if FlightPlanDownload.WasTargetDirectoryCreated == false then
+    -- Seems to open a console window (at least under windows) - make sure it only runs once
+    os.execute("mkdir " .. FlightPlanDownload.Directory)
+    FlightPlanDownload.WasTargetDirectoryCreated = true
+  end
   
   -- Invalidate old flightplans on disk
   deleteDownloadedFlightPlansIfConfigured()
 end
 
 local function getFlightplanFileTypesArray()
-  return FlightplanDownloadFileTypes
+  return FlightPlanDownload.FileTypes
 end
 
 do_sometimes("downloadAllFlightplans()")
@@ -956,8 +1027,8 @@ local function processNewFlightplan(httpRequest)
         
         CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.NO_ERROR
         
-        downloadedFlightPlansFileName = ("%s_%s-%s"):format(os.date("%Y%m%d_%H%M%S"), FlightplanOriginIcao, FlightplanDestIcao)
-        runFlightPlanDownloadForNewFlightPlan(FlightplanId, filesDirectory, fileTypesAndNames, downloadedFlightPlansFileName)
+        initConversionOfConfiguredDestFileNames(FlightplanOriginIcao, FlightplanDestIcao)
+        restartFlightPlanDownloads(FlightplanId, filesDirectory, fileTypesAndNames)
       end
     else
       logMsg("Flight plan states that it's not valid. Reported status: " .. simbriefFlightplanXmlHandler.root.OFP.fetch.status)
@@ -1130,13 +1201,13 @@ local refreshVatsimDataTimer = timer.new({
 local vatsimbriefHelperIsInitialized = false
 
 function tryVatsimbriefHelperInit()
-	if vatsimbriefHelperIsInitialized then
-		return
-	end
-	
+  if vatsimbriefHelperIsInitialized then
+    return
+  end
+ 
   -- Initialization tasks go here ...
   
-	vatsimbriefHelperIsInitialized = true
+  vatsimbriefHelperIsInitialized = true
 end
 
 do_often("tryVatsimbriefHelperInit()")
@@ -1189,7 +1260,7 @@ function timespanToHm(s)
 end
 
 function buildVatsimbriefHelperFlightplanWindowCanvas()
-	-- Invent a caching mechanism to prevent rendering the strings each frame
+  -- Invent a caching mechanism to prevent rendering the strings each frame
   local flightplanChanged = FlightplanWindowLastRenderedFlightplanId ~= FlightplanId
   local flightplanFetchStatusChanged = AtcWindowLastRenderedSimbriefFlightplanFetchStatus ~= CurrentSimbriefFlightplanFetchStatus
   local renderContent = flightplanChanged or flightplanFetchStatusChanged or not FlightplanWindowHasRenderedContent
@@ -1311,13 +1382,13 @@ end
 local vatsimbriefHelperFlightplanWindow = nil
 
 function destroyVatsimbriefHelperFlightplanWindow()
-	if vatsimbriefHelperFlightplanWindow ~= nil then
+  if vatsimbriefHelperFlightplanWindow ~= nil then
     setConfiguredFlightPlanWindowVisibility(false)
     saveConfiguration()
-		float_wnd_destroy(vatsimbriefHelperFlightplanWindow)
+    float_wnd_destroy(vatsimbriefHelperFlightplanWindow)
     vatsimbriefHelperFlightplanWindow = nil
     trackWindowOpen("flight-plan", false)
-	end
+  end
 end
 
 function createVatsimbriefHelperFlightplanWindow()
@@ -1336,7 +1407,7 @@ function createVatsimbriefHelperFlightplanWindow()
 end
 
 function showVatsimbriefHelperFlightplanWindow(value)
-	if value and vatsimbriefHelperFlightplanWindow == nil then
+  if value and vatsimbriefHelperFlightplanWindow == nil then
     createVatsimbriefHelperFlightplanWindow()
   elseif not value and vatsimbriefHelperFlightplanWindow ~= nil then
     destroyVatsimbriefHelperFlightplanWindow()
@@ -1443,7 +1514,7 @@ local function renderAirportAtcToString(airportIcao, airportIata)
 end
 
 function buildVatsimbriefHelperAtcWindowCanvas()
-	-- Invent a caching mechanism to prevent rendering the strings each frame
+  -- Invent a caching mechanism to prevent rendering the strings each frame
   local flightplanChanged = AtcWindowLastRenderedFlightplanId ~= FlightplanId
   local atcIdentifiersUpdated = AtcWindowLastAtcIdentifiersUpdatedTimestamp ~= VatsimData.AtcIdentifiersUpdatedTimestamp
   local flightplanFetchStatusChanged = AtcWindowLastRenderedSimbriefFlightplanFetchStatus ~= CurrentSimbriefFlightplanFetchStatus
@@ -1530,7 +1601,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     AtcWindowLastAtcIdentifiersUpdatedTimestamp = VatsimData.AtcIdentifiersUpdatedTimestamp
     AtcWindowHasRenderedContent = true
   end
-	
+
   -- Paint
   imgui.SetWindowFontScale(AtcWindow.FontScale)
   
@@ -1583,13 +1654,13 @@ end
 do_sometimes("updateAtcWindowTitle()")
 
 function destroyVatsimbriefHelperAtcWindow()
-	if vatsimbriefHelperAtcWindow ~= nil then
+  if vatsimbriefHelperAtcWindow ~= nil then
     setConfiguredAtcWindowVisibility(false)
     saveConfiguration()
-		float_wnd_destroy(vatsimbriefHelperAtcWindow)
+    float_wnd_destroy(vatsimbriefHelperAtcWindow)
     vatsimbriefHelperAtcWindow = nil
     trackWindowOpen("atc", false)
-	end
+  end
 end
 
 function createVatsimbriefHelperAtcWindow()
@@ -1608,7 +1679,7 @@ function createVatsimbriefHelperAtcWindow()
 end
 
 function showVatsimbriefHelperAtcWindow(value)
-	if value and vatsimbriefHelperAtcWindow == nil then
+  if value and vatsimbriefHelperAtcWindow == nil then
     createVatsimbriefHelperAtcWindow()
   elseif not value and vatsimbriefHelperAtcWindow ~= nil then
     destroyVatsimbriefHelperAtcWindow()
@@ -1636,11 +1707,12 @@ local MainMenuOptions = {
 }
 
 local ControlWindow = {
-  mapFlightPlanDownloadTypeToDirTmp = {}
+  mapFlightPlanDownloadTypeToDirTmp = {},
+  mapFlightPlanDownloadTypeToFileNameTmp = {}
 }
 
 function buildVatsimbriefHelperControlWindowCanvas()
-	imgui.SetWindowFontScale(1.5)
+  imgui.SetWindowFontScale(1.5)
   
   -- Main menu
   local currentMenuItem = menuItem -- We get into race conditions when not copying before changing
@@ -1733,10 +1805,13 @@ function buildVatsimbriefHelperControlWindowCanvas()
     if FlightplanId == nil then
       imgui.TextUnformatted("Waiting for a flight plan ...")
     else
+      local padding = "  "
+      
       imgui.TextUnformatted("Please mark the flight plan types that you want to be downloaded.")
       imgui.TextUnformatted("If no path is entered, the default folder will be used:\n"
-        .. "  " .. FlightplanDownloadDirectory)
-      imgui.TextUnformatted("  ") -- Padding: Align with download directory
+        .. padding .. FlightPlanDownload.Directory)
+      
+      imgui.TextUnformatted(padding)
       imgui.SameLine()
       local changed, newVal = imgui.Checkbox("Auto clean up stale flight plans from default folder", getConfiguredDeleteOldFlightPlansSetting())
       if changed then
@@ -1744,14 +1819,23 @@ function buildVatsimbriefHelperControlWindowCanvas()
         saveConfiguration()
         -- deleteDownloadedFlightPlansIfConfigured() -- Better not that fast, without any confirmation
       end
-      imgui.TextUnformatted("")
+      
+      imgui.TextUnformatted("Default file name: <YYYYMMDD_HHMMSS>_<ORIG_ICAO>-<DEST_ICAO>.<EXTENSION>")
+      imgui.TextUnformatted("File name format: %o - Source ICAO, %d - Dest ICAO, %a - Date, %t - Time")
+      
+      imgui.PushStyleColor(imgui.constant.Col.Text, colorWarn)
+      imgui.TextUnformatted("Existing files will be overwritten!")
+      imgui.PopStyleColor()
+      
+      imgui.TextUnformatted("") -- Blank line
+      
       local fileTypes = getFlightplanFileTypesArray()
       local maxFileTypesLength = 0
       for i = 1, #fileTypes do if string.len(fileTypes[i]) > maxFileTypesLength then maxFileTypesLength = string.len(fileTypes[i]) end end
       for i = 1, #fileTypes do
         local statusOnOff = isFlightplanFileDownloadEnabled(fileTypes[i])
         local nameWithPadding = string.format("%-" .. maxFileTypesLength .. "s", fileTypes[i])
-        imgui.PushID(3 * i)
+        imgui.PushID(5 * i)
         local changed, enabled = imgui.Checkbox(nameWithPadding, statusOnOff)
         imgui.PopID()
         if changed then
@@ -1761,9 +1845,10 @@ function buildVatsimbriefHelperControlWindowCanvas()
         end
         if statusOnOff == true then
           --imgui.SameLine()
-          imgui.TextUnformatted("    (Dest Folder: ")
+          local padding2 = "    "
+          imgui.TextUnformatted(padding2 .. "(Dest Folder: ")
           imgui.SameLine()
-          imgui.PushID(3 * i + 2)
+          imgui.PushID(5 * i + 1)
           local savePath = false
           if imgui.Button("Set") then
             -- We don't want to save the config "on change" as it creates too much disk load again. Therefore, add this button.
@@ -1772,21 +1857,48 @@ function buildVatsimbriefHelperControlWindowCanvas()
           end
           imgui.PopID()
           imgui.SameLine()
-          imgui.PushID(3 * i + 2)
+          imgui.PushID(5 * i + 2)
           if ControlWindow.mapFlightPlanDownloadTypeToDirTmp[fileTypes[i]] == nil then
-            ControlWindow.mapFlightPlanDownloadTypeToDirTmp[fileTypes[i]] = FlightPlanDownload.MapTypeToDestFolder[fileTypes[i]]
+            ControlWindow.mapFlightPlanDownloadTypeToDirTmp[fileTypes[i]] = getFlightPlanDownloadDirectory(fileTypes[i])
           end
           local pathChanged, path = imgui.InputText("", defaultIfBlank(ControlWindow.mapFlightPlanDownloadTypeToDirTmp[fileTypes[i]], emptyString), 255)
           if pathChanged then ControlWindow.mapFlightPlanDownloadTypeToDirTmp[fileTypes[i]] = path end
           imgui.PopID()
           imgui.SameLine()
           imgui.TextUnformatted(")")
-          
+ 
           if savePath then
             local configuredDir = defaultIfBlank(ControlWindow.mapFlightPlanDownloadTypeToDirTmp[fileTypes[i]], nil)
             setFlightPlanDownloadDirectory(fileTypes[i], configuredDir)
             saveFlightPlanFilesForDownload()
-            downloadFlightplan(fileTypes[i])
+            downloadFlightPlanAgain(fileTypes[i])
+          end
+          
+          imgui.TextUnformatted(padding2 .. "(File Name: ")
+          imgui.SameLine()
+          imgui.PushID(5 * i + 3)
+          local saveFileName = false
+          if imgui.Button("Set") then
+            -- We don't want to save the config "on change" as it creates too much disk load again. Therefore, add this button.
+            -- Save that button was clicked, for later use
+            saveFileName = true
+          end
+          imgui.PopID()
+          imgui.SameLine()
+          imgui.PushID(5 * i + 4)
+          if ControlWindow.mapFlightPlanDownloadTypeToFileNameTmp[fileTypes[i]] == nil then
+            ControlWindow.mapFlightPlanDownloadTypeToFileNameTmp[fileTypes[i]] = getFlightPlanDownloadFileName(fileTypes[i])
+          end
+          local fileNameChanged, fileName = imgui.InputText("", defaultIfBlank(ControlWindow.mapFlightPlanDownloadTypeToFileNameTmp[fileTypes[i]], emptyString), 255)
+          if fileNameChanged then ControlWindow.mapFlightPlanDownloadTypeToFileNameTmp[fileTypes[i]] = fileName end
+          imgui.PopID()
+          imgui.SameLine()
+          imgui.TextUnformatted(")")
+          if saveFileName then
+            local configuredFileName = defaultIfBlank(ControlWindow.mapFlightPlanDownloadTypeToFileNameTmp[fileTypes[i]], nil)
+            setFlightPlanDownloadFileName(fileTypes[i], configuredFileName)
+            saveFlightPlanFilesForDownload()
+            downloadFlightPlanAgain(fileTypes[i])
           end
         end
       end

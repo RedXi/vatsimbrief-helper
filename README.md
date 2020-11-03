@@ -22,7 +22,7 @@ It solves major issues that VR pilots usually face:
 
 ## Usage
 
-* Create your flight plan on [simbrief](https://www.simbrief.com/) as usual, at some time before takeoff.
+* Create your flight plan on [Simbrief](https://www.simbrief.com/) as usual, at some time before takeoff.
 * Windows can be toggled inside the plugins menu `Plugins / FlyWithLua / FlyWithLua Macros`:
   * `Vatsimbrief Helper Flight Plan`: Opens/closes a window showing a relevant excerpt of the flight plan.
   * `Vatsimbrief Helper ATC`: Opens/closes a window showing relevant ATC frequencies that will refresh every minute, if "Auto Refresh" is enabled.
@@ -35,6 +35,11 @@ It solves major issues that VR pilots usually face:
   + `FlyWithLua/Vatsimbrief Helper/ToggleFlightPlanWindow`: Toggles the flight plan window.
   + `FlyWithLua/Vatsimbrief Helper/ToggleAtcWindow`: Toggles the ATC window.
   + `FlyWithLua/Vatsimbrief Helper/ToggleControlWindow`: Toggles the configuration window.
+* For automatic flight plan downloads, it's possible to configure the folder and the file name on a per file-type basis. Empty values mean that the default path as seen on top of the `Vatsimbrief Helper Control` window and a file name format of `%a_%t_%o-%d` is used. The default file name format generates names like `20201103_013246_EDDM-EDDT.mdr` to protect from accidentally overwriting existing files. However, the file name format can be customized by using one or more of the following placeholders:
+  + `%a`: Date
+  + `%t`: Time
+  + `%o`: Origin Airport ICAO
+  + `%d`: Destination Airport ICAO
 
 **Happy Flying!**
 
@@ -42,7 +47,7 @@ It solves major issues that VR pilots usually face:
 
 Required runtime Lua dependencies: copas, luasocket, binaryheap.lua, coxpcall, timerwheel.lua, LIP, xml2lua
 
-They are bundled with the release artifact.
+The required files are bundled with the release artifact.
 
 ## FAQ
 
