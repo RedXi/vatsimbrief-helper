@@ -1906,6 +1906,7 @@ do
     )
 
     -- For some odd reason, LUA does _not_ have a 'continue' statement
+    local continue = nil
     local textIndex = 1
     while (textIndex <= #fullAtcString) do
       local nextEqualSignIndex = fullAtcString:find("=", textIndex)
@@ -1915,7 +1916,7 @@ do
       nextStop = self:_mathMinNilIsInfinite(nextEqualSignIndex, nextStop)
       nextStop = self:_mathMinNilIsInfinite(nextNewlineIndex, nextStop)
 
-      local continue = false
+      continue = false
       if (nextStop == nextNewlineIndex) then
         self:addTextWithoutNewline(fullAtcString:sub(textIndex, nextNewlineIndex - 1))
         self:addNewline()

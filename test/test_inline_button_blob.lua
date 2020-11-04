@@ -29,26 +29,14 @@ function TestInlineButtonBlob:testRendersAllWidgetsInOrderWithProperNewlines()
 
     sameLineTooEarlyIndex = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SameLine)
 
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.TextUnformatted)
-    luaUnit.assertEquals(imguiStub:getCommandFromList(i).textString, someText)
-
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, someText)
     luaUnit.assertIsTrue(sameLineTooEarlyIndex > i)
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.TextUnformatted)
-    luaUnit.assertEquals(imguiStub:getCommandFromList(i).textString, someOtherText)
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SmallButton)
-    luaUnit.assertEquals(imguiStub:matchButtonTitle(imguiStub:getCommandFromList(i).title), buttonTitle)
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SameLine)
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.TextUnformatted)
-    luaUnit.assertEquals(imguiStub:getCommandFromList(i).textString, seriousText)
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SameLine)
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SmallButton)
-    luaUnit.assertEquals(imguiStub:matchButtonTitle(imguiStub:getCommandFromList(i).title), buttonTitle2)
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, someOtherText)
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SmallButton, buttonTitle)
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, seriousText)
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SmallButton, buttonTitle2)
 end
 
 function TestInlineButtonBlob:testAtcStringIsRenderedCorrectly()
@@ -68,58 +56,26 @@ function TestInlineButtonBlob:testAtcStringIsRenderedCorrectly()
     local i = 0
     local sameLineTooEarlyIndex = 0
 
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.TextUnformatted)
-    luaUnit.assertEquals(imguiStub:getCommandFromList(i).textString, "EEEE: ATIS=")
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SameLine)
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SmallButton)
-    luaUnit.assertEquals(imguiStub:matchButtonTitle(imguiStub:getCommandFromList(i).title), "122.800")
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SameLine)
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.TextUnformatted)
-    luaUnit.assertEquals(imguiStub:getCommandFromList(i).textString, " H=")
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SameLine)
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.TextUnformatted)
-    luaUnit.assertEquals(imguiStub:getCommandFromList(i).textString, "23 TWR=")
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SameLine)
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SmallButton)
-    luaUnit.assertEquals(imguiStub:matchButtonTitle(imguiStub:getCommandFromList(i).title), "119.400")
-
-    sameLineTooEarlyIndex = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SameLine)
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.TextUnformatted)
-    luaUnit.assertEquals(imguiStub:getCommandFromList(i).textString, "      APP=")
-
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "EEEE: ATIS=")
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SmallButton, "122.800")
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, " H=")
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "23 TWR=")
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SmallButton, "119.400")
+    sameLineTooEarlyIndex = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "      APP=")
     luaUnit.assertIsTrue(sameLineTooEarlyIndex > i)
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SameLine)
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SmallButton)
-    luaUnit.assertEquals(imguiStub:matchButtonTitle(imguiStub:getCommandFromList(i).title), "134.670")
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SameLine)
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.TextUnformatted)
-    luaUnit.assertEquals(imguiStub:getCommandFromList(i).textString, " OBS=")
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SameLine)
-
-    sameLineTooEarlyIndex = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SameLine)
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.TextUnformatted)
-    luaUnit.assertEquals(imguiStub:getCommandFromList(i).textString, "199.998")
-
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SmallButton, "134.670")
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, " OBS=")
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "199.998")
+    sameLineTooEarlyIndex = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
     luaUnit.assertIsNil(sameLineTooEarlyIndex)
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.TextUnformatted)
-    luaUnit.assertEquals(imguiStub:getCommandFromList(i).textString, "AAAA: -")
-
-    i = imguiStub:findCommandInList(i + 1, imguiStub.Constants.TextUnformatted)
-    luaUnit.assertEquals(imguiStub:getCommandFromList(i).textString, "BBBB: ATIS=")
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "AAAA: -")
+    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "BBBB: ATIS=")
 end

@@ -91,6 +91,22 @@ imgui = {
     end
 }
 
+function imgui:findNextMatch(startIndex, commandType, textString)
+    local nextIndex = self:findCommandInList(startIndex, commandType)
+    if (nextIndex == nil) then
+        return nil
+    end
+    local cmd = self.LastFrameCommandList[nextIndex]
+
+    if (commandType == self.Constants.Button or commandType == self.Constants.SmallButton) then
+        luaUnit.assertEquals(self:matchButtonTitle(cmd.title), textString)
+    elseif (commandType == self.Constants.TextUnformatted) then
+        luaUnit.assertEquals(cmd.textString, textString)
+    end
+
+    return nextIndex
+end
+
 function imgui:matchButtonTitle(title)
     return title:match(self.Constants.ButtonTitleWithIdMatcherPattern)
 end
