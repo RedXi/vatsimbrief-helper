@@ -40,7 +40,9 @@ imgui = {
         Button = "Button",
         SmallButton = "SmallButton",
         TextUnformatted = "TextUnformatted",
-        SameLine = "SameLine"
+        SameLine = "SameLine",
+        PushStyleColor = "PushStyleColor",
+        PopStyleColor = "PopStyleColor"
     },
     LastFrameCommandList = {},
     SetWindowFontScale = function(value)
@@ -60,19 +62,24 @@ imgui = {
     PushStyleColor = function(const, value)
         luaUnit.assertNotNil(value)
         imgui.styleColorStackSize = imgui.styleColorStackSize + 1
+        table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.PushStyleColor, color = value})
     end,
     SameLine = function()
         table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.SameLine})
     end,
     PopStyleColor = function()
         imgui.styleColorStackSize = imgui.styleColorStackSize - 1
+        table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.PopStyleColor, color = value})
     end,
     Dummy = function(value1, value2)
     end,
     SmallButton = function(value)
         imgui:checkStringForWatchStrings(value)
         table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.SmallButton, title = value})
-        if (value == imgui.pressButtonWithThisTitleProgrammatically) then
+        if
+            (value:match(imgui.Constants.ButtonTitleWithIdMatcherPattern) ==
+                imgui.pressButtonWithThisTitleProgrammatically)
+         then
             imgui.buttonPressed = true
             return true
         end
@@ -82,7 +89,10 @@ imgui = {
     Button = function(value)
         imgui:checkStringForWatchStrings(value)
         table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.Button, title = value})
-        if (value == imgui.pressButtonWithThisTitleProgrammatically) then
+        if
+            (value:match(imgui.Constants.ButtonTitleWithIdMatcherPattern) ==
+                imgui.pressButtonWithThisTitleProgrammatically)
+         then
             imgui.buttonPressed = true
             return true
         end

@@ -17,5 +17,5 @@ echo [91mCopying files failed[0m. Lookup %TASK_OUTPUT_FILENAME% to find out wh
 exit(%ERRORLEVEL%)
 
 :label_copying_ok
-echo OK: Copied files to X-Plane. In case you'd like to see which ones, look up %TASK_OUTPUT_FILENAME%.
+echo OK: Copied files to X-Plane. In case you'd like to see which ones, look up %TASK_OUTPUT_FILENAME%
 exit(0)

@@ -17,7 +17,7 @@ It solves major issues that VR pilots usually face:
 
 * Install FlyWithLua plugin: https://forums.x-plane.org/index.php?/files/file/38445-flywithlua-ng-next-generation-edition-for-x-plane-11-win-lin-mac/
 * Download the [latest release of this plugin](https://github.com/RedXi/vatsimbrief-helper/releases/latest)
-* Extract *all* folders in the zip-File to `<X-Plane-Directory>/Resources/plugins/FlyWithLua/` and, if asked, overwrite existing files. It's **not** sufficient to put the script `vatsimbrief-helper.lua` into the `scripts`-Directory!
+* _Use the installer and install to your X-Plane folder_ <sub><sup>or extract *all* folders in the zip-File to `<X-Plane-Directory>/Resources/plugins/FlyWithLua/` and, if asked, overwrite existing files. It's **not** sufficient to put the script `vatsimbrief-helper.lua` into the `scripts`-Directory!</sup></sub>
 * During first launch, a configuration window will show automatically. Enter your *Simbrief Username* and press *Set*.
 
 ## Usage
@@ -43,11 +43,14 @@ It solves major issues that VR pilots usually face:
 
 **Happy Flying!**
 
+## VHF Helper Integration
+Vatsimbrief Helper supports _clicking a frequency in the ATC window_ and subsequently tune it in via [VHF Helper](https://github.com/VerticalLongboard/xplane-vhf-helper/). Install and enable both at the same time and you're good to go.
+
 ## Dependencies
 
 Required runtime Lua dependencies: copas, luasocket, binaryheap.lua, coxpcall, timerwheel.lua, LIP, xml2lua
 
-The required files are bundled with the release artifact.
+The required files are bundled with the release artifact (both ZIP and EXE)
 
 ## FAQ
 
