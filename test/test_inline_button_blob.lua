@@ -54,7 +54,7 @@ function TestInlineButtonBlob:testDefaultCallbackIsCalled()
     imguiStub:startFrame()
     blob:renderToCanvas()
     imguiStub:endFrame()
-    luaUnit.assertIsTrue(imguiStub:wasButtonPressed())
+    luaUnit.assertIsTrue(called)
 end
 
 function TestInlineButtonBlob:testAtcStringIsRenderedCorrectly()

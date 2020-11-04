@@ -6,7 +6,7 @@
         {
             "label": "packReleasePackage",
             "dependsOn": [
-                "copyToXPlane"
+                "buildAndReloadFlyWithLua"
             ],
             "type": "process",
             "command": "No non-windows command available.",
