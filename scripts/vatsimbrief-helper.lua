@@ -1901,6 +1901,7 @@ do
   function AtcStringInlineButtonBlob:build(fullAtcString)
     self:setDefaultButtonCallbackFunction(
       function(buttonText)
+        print(buttonText)
         VHFHelperPublicInterface.enterFrequencyProgrammaticallyAsString(buttonText)
       end
     )

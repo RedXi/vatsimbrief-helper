@@ -13,7 +13,7 @@ local vhfHelperStub = {
 
 VHFHelperPublicInterface = {
 	enterFrequencyProgrammaticallyAsString = function(newFullString)
-		if (isValidFrequency(fullFrequencyString)) then
+		if (isValidFrequency(newFullString)) then
 			vhfHelperStub.frequencies.entered = newFullString
 			return vhfHelperStub.frequencies.entered
 		end

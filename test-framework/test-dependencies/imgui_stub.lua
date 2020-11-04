@@ -36,7 +36,7 @@ imgui = {
         }
     },
     Constants = {
-        ButtonTitleWithIdMatcherPattern = "(.*)##.*",
+        ButtonTitleWithIdMatcherPattern = "^(.*)[#][#].*$",
         Button = "Button",
         SmallButton = "SmallButton",
         TextUnformatted = "TextUnformatted",
