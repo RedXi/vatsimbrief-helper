@@ -23,13 +23,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --]]
+local luaUnitOutput = require("luaunit_output")
 local luaUnit = require("luaunit")
 local flyWithLuaStub = require("xplane_fly_with_lua_stub")
 local imguiStub = require("imgui_stub")
 
-local vatsimbriefHelper = dofile("scripts/vatsimbrief-helper.lua")
+local vhfHelper = dofile("scripts/vatsimbrief-helper.lua")
 flyWithLuaStub:suppressLogMessagesBeginningWith("Vatsimbrief Helper using '")
 
+require("test_inline_button_blob")
+
 local runner = luaUnit.LuaUnit.new()
-runner:setOutputType("text", nil)
+runner:setOutput(luaUnitOutput.ColorText)
 os.exit(runner:runSuite())

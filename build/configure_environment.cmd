@@ -18,7 +18,7 @@ set XPLANE_PATH=%XPLANE_PATH:"=%
 
 if not exist build_configuration.cmd (
     (
-        echo set READABLE_SCRIPT_NAME="!!! UPDATE build_configuration.cmd"
+        echo set READABLE_SCRIPT_NAME="___UPDATE build_configuration_cmd"
         echo set RELEASE_FILE_NAME_PREFIX="___UPDATE_build_configuration_cmd"
     ) > build_configuration.cmd
 )

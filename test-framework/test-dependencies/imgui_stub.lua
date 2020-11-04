@@ -35,6 +35,14 @@ imgui = {
             Button
         }
     },
+    Constants = {
+        ButtonTitleWithIdMatcherPattern = "(.*)##.*",
+        Button = "Button",
+        SmallButton = "SmallButton",
+        TextUnformatted = "TextUnformatted",
+        SameLine = "SameLine"
+    },
+    LastFrameCommandList = {},
     SetWindowFontScale = function(value)
     end,
     PushStyleVar_2 = function(value, value2, value3)
@@ -47,20 +55,33 @@ imgui = {
     end,
     TextUnformatted = function(value)
         imgui:checkStringForWatchStrings(value)
+        table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.TextUnformatted, textString = value})
     end,
     PushStyleColor = function(const, value)
         luaUnit.assertNotNil(value)
         imgui.styleColorStackSize = imgui.styleColorStackSize + 1
     end,
     SameLine = function()
+        table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.SameLine})
     end,
     PopStyleColor = function()
         imgui.styleColorStackSize = imgui.styleColorStackSize - 1
     end,
     Dummy = function(value1, value2)
     end,
+    SmallButton = function(value)
+        imgui:checkStringForWatchStrings(value)
+        table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.SmallButton, title = value})
+        if (value == imgui.pressButtonWithThisTitleProgrammatically) then
+            imgui.buttonPressed = true
+            return true
+        end
+
+        return false
+    end,
     Button = function(value)
         imgui:checkStringForWatchStrings(value)
+        table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.Button, title = value})
         if (value == imgui.pressButtonWithThisTitleProgrammatically) then
             imgui.buttonPressed = true
             return true
@@ -69,6 +90,24 @@ imgui = {
         return false
     end
 }
+
+function imgui:matchButtonTitle(title)
+    return title:match(self.Constants.ButtonTitleWithIdMatcherPattern)
+end
+
+function imgui:getCommandFromList(commandIndex)
+    return self.LastFrameCommandList[commandIndex]
+end
+
+function imgui:findCommandInList(startIndex, commandType)
+    for i = startIndex, #self.LastFrameCommandList do
+        if (self.LastFrameCommandList[i].type == commandType) then
+            return i
+        end
+    end
+
+    return nil
+end
 
 function imgui:checkStringForWatchStrings(value)
     if (imgui.watchString ~= nil and value:find(imgui.watchString)) then
@@ -86,6 +125,7 @@ function imgui:startFrame()
     self.buttonPressed = false
     self.styleVarStackSize = 0
     self.styleColorStackSize = 0
+    self.LastFrameCommandList = {}
 end
 
 function imgui:pressButtonProgrammaticallyOnce(buttonTitle)

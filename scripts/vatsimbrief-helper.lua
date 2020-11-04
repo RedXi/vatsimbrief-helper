@@ -1447,13 +1447,19 @@ function tryVatsimbriefHelperInit()
   end
 
   if (lazyInitializationTries > 0 and lazyInitializationTries % 10 == 0) then
-    logMsg(("Vatsimbrief Helper: Lazy initialization is taking very long, tried %d times already."):format(lazyInitializationTries))
+    logMsg(
+      ("Vatsimbrief Helper: Lazy initialization is taking very long, tried %d times already."):format(
+        lazyInitializationTries
+      )
+    )
   end
 
   -- Initialization tasks go here ...
-  if (VHFHelperEventBus == nil) then return end
+  if (VHFHelperEventBus == nil) then
+    return
+  end
   VHFHelperEventBus.on(VHFHelperEventOnFrequencyChanged, onVHFHelperFrequencyChanged)
-  
+
   logMsg("Vatsimbrief Helper: Lazy initialization finished.")
   vatsimbriefHelperIsInitialized = true
 end
@@ -1885,8 +1891,8 @@ do
 
   -- Override
   function AtcStringInlineButtonBlob:addTextWithoutNewline(nextTextSubstring)
-    -- Convenience: Do NOT add nil strings to blob
-    if (nextTextSubstring == nil) then
+    -- Convenience: Do NOT add nil or empty strings to blob
+    if (nextTextSubstring == nil or nextTextSubstring == emptyString) then
       return
     end
     InlineButtonImguiBlob.addTextWithoutNewline(self, nextTextSubstring)
@@ -1901,7 +1907,6 @@ do
 
     -- For some odd reason, LUA does _not_ have a 'continue' statement
     local textIndex = 1
-    -- ::continue_da622c6e::
     while (textIndex <= #fullAtcString) do
       local nextEqualSignIndex = fullAtcString:find("=", textIndex)
       local nextNewlineIndex = fullAtcString:find("\n", textIndex)
@@ -1911,12 +1916,10 @@ do
       nextStop = self:_mathMinNilIsInfinite(nextNewlineIndex, nextStop)
 
       local continue = false
-
       if (nextStop == nextNewlineIndex) then
         self:addTextWithoutNewline(fullAtcString:sub(textIndex, nextNewlineIndex - 1))
         self:addNewline()
         textIndex = nextNewlineIndex + 1
-        -- goto continue_da622c6e
         continue = true
       end
 
@@ -1935,7 +1938,6 @@ do
         continue = false
         if (not VHFHelperPublicInterface.isValidFrequency(fullFrequencyString)) then
           textIndex = nextEqualSignIndex + 1
-          -- goto continue_da622c6e
           continue = true
         end
 
