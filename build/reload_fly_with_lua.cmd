@@ -33,7 +33,7 @@ for /F "tokens=1,2 delims==" %%A in ('type TASK_OUTPUT\copyToXPlane_filtered_fwl
 if %DEV_MODE_SETTING%==0 (
     echo.
     echo Your FlyWithLua installation has [93mdeveloper mode disabled[0m and moves erroneous scripts to Quarantine.
-    echo To not be required to manually move erroneous scripts back from Quarantine, consider enabling developer mode in %FWL_PREFS_INI_PATH:"=%
+    echo To remove yourself from the burden of moving them back back manually from Quarantine, consider enabling developer mode in %FWL_PREFS_INI_PATH:"=%
 )
 
 set ERRORLEVEL=0

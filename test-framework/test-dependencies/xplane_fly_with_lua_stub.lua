@@ -105,9 +105,16 @@ function flyWithLuaStub:closeWindow(window)
 end
 
 function flyWithLuaStub:runNextFrameAfterExternalWritesToDatarefs()
-    self.doSometimesFunction()
-    self.doOftenFunction()
-    self.doEveryFrameFunction()
+    if (self.doSometimesFunction ~= nil) then
+        self.doSometimesFunction()
+    end
+    if (self.doOftenFunction ~= nil) then
+        self.doOftenFunction()
+    end
+    if (self.doEveryFrameFunction ~= nil) then
+        self.doEveryFrameFunction()
+    end
+
     self:readbackAllWritableDatarefs()
 
     if (not flyWithLuaStub.userInterfaceIsActive) then
