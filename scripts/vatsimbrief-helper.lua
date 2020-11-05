@@ -788,7 +788,7 @@ function processFlightPlanFileDownloadSuccess(httpRequest)
       resolveConfiguredDestFileName(fileNameFormat) ..
         getExtensionOfFileName(FlightPlanDownload.FileTypesAndNames[typeName])
 
-    local f = io.open(targetFilePath, "w")
+    local f = io.open(targetFilePath, "wb")
     if io.type(f) ~= "file" then
       logMsg("Failed to write data to file path: " .. targetFilePath)
     else
