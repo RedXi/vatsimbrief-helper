@@ -1,18 +1,39 @@
-@REM DO NOT change this file to setup your local environment. Instead, run any task at least once and look up LOCAL_ENVIRONMENT_CONFIGURATION.cmd
+@REM DO NOT change this file to setup your local environment. Instead, run any task at least once and look up these two files:
+@REM - LOCAL_ENVIRONMENT_CONFIGURATION.cmd
+@REM - build_configuration.cmd
+set DEFAULT_NSIS_EXECUTABLE="C:\Program Files (x86)\NSIS\makensis.exe"
+set DEFAULT_LUA_EXECUTABLE="C:\Program Files (x86)\Lua\5.1\lua.exe"
+set DEFAULT_LUA_DEFAULT_MODULES_PATH="C:\Program Files (x86)\Lua\5.1\lua"
+set DEFAULT_SEVEN_ZIP_EXECUTABLE="C:\Program Files\7-Zip\7z.exe"
+set DEFAULT_PACKETSENDER_EXECUTABLE="C:\Program Files\PacketSender\packetsender.com"
+set DEFAULT_XPLANE_PATH="C:\X-Plane 11"
+set DEFAULT_GIT_EXECUTABLE="C:\Program Files\Git\bin\git.exe"
+
 :label_regenerate_local_environment
 if not exist LOCAL_ENVIRONMENT_CONFIGURATION.cmd (
     (
-        echo set NSIS_EXECUTABLE="C:\Program Files (x86)\NSIS\makensis.exe"
-        echo set LUA_EXECUTABLE="C:\Program Files (x86)\Lua\5.1\lua.exe"
-        echo set LUA_DEFAULT_MODULES_PATH="C:\Program Files (x86)\Lua\5.1\lua"
-        echo set SEVEN_ZIP_EXECUTABLE="C:\Program Files\7-Zip\7z.exe"
-        echo set PACKETSENDER_EXECUTABLE="C:\Program Files\PacketSender\packetsender.com"
-        echo set XPLANE_PATH="C:\X-Plane 11"
-        echo set GIT_EXECUTABLE="C:\Program Files\Git\bin\git.exe"
+        echo set NSIS_EXECUTABLE=%DEFAULT_NSIS_EXECUTABLE%
+        echo set LUA_EXECUTABLE=%DEFAULT_LUA_EXECUTABLE%
+        echo set LUA_DEFAULT_MODULES_PATH=%DEFAULT_LUA_DEFAULT_MODULES_PATH%
+        echo set SEVEN_ZIP_EXECUTABLE=%DEFAULT_SEVEN_ZIP_EXECUTABLE%
+        echo set PACKETSENDER_EXECUTABLE=%DEFAULT_PACKETSENDER_EXECUTABLE%
+        echo set XPLANE_PATH=%DEFAULT_XPLANE_PATH%
+        echo set GIT_EXECUTABLE=%DEFAULT_GIT_EXECUTABLE%
     ) > LOCAL_ENVIRONMENT_CONFIGURATION.cmd
 )
 
 call LOCAL_ENVIRONMENT_CONFIGURATION.cmd
+
+if not defined GIT_EXECUTABLE (
+    set DEFAULT_NSIS_EXECUTABLE=%NSIS_EXECUTABLE%
+    set DEFAULT_LUA_EXECUTABLE=%LUA_EXECUTABLE%
+    set DEFAULT_LUA_DEFAULT_MODULES_PATH=%LUA_DEFAULT_MODULES_PATH%
+    set DEFAULT_SEVEN_ZIP_EXECUTABLE=%SEVEN_ZIP_EXECUTABLE%
+    set DEFAULT_PACKETSENDER_EXECUTABLE=%PACKETSENDER_EXECUTABLE%
+    set DEFAULT_XPLANE_PATH=%XPLANE_PATH%
+    del LOCAL_ENVIRONMENT_CONFIGURATION.cmd
+    goto :label_regenerate_local_environment
+)
 
 set LUA_DEFAULT_MODULES_PATH=%LUA_DEFAULT_MODULES_PATH:"=%
 set XPLANE_PATH=%XPLANE_PATH:"=%
