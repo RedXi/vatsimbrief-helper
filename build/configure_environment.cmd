@@ -25,6 +25,7 @@ call .\build\set_default_environment.cmd
     set LUA_DEFAULT_MODULES_PATH=%LUA_DEFAULT_MODULES_PATH:"=%
     set XPLANE_PATH=%XPLANE_PATH:"=%
 
+call .\build\set_default_configuration.cmd
 :label_regenerate_build_configuration
     if not exist build_configuration.cmd (
         (

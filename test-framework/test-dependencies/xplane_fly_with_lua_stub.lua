@@ -27,6 +27,8 @@ local luaUnit = require("luaunit")
 local imguiStub = require("imgui_stub")
 
 SCRIPT_DIRECTORY = "."
+local invalidPlaneIcao = "...."
+PLANE_ICAO = invalidPlaneIcao
 
 flyWithLuaStub = {
     Constants = {
@@ -42,7 +44,8 @@ flyWithLuaStub = {
     suppressLogMessageString = nil,
     doSometimesFunctions = {},
     doOftenFunctions = {},
-    doEveryFrameFunctions = {}
+    doEveryFrameFunctions = {},
+    planeIcao = nil
 }
 
 function logMsg(stringToLog)
@@ -66,7 +69,13 @@ function flyWithLuaStub:suppressLogMessagesBeginningWith(stringBeginning)
     flyWithLuaStub.suppressLogMessageString = stringBeginning
 end
 
+function flyWithLuaStub:setPlaneIcao(value)
+    self.planeIcao = value
+    PLANE_ICAO = value
+end
+
 function flyWithLuaStub:reset()
+    self:setPlaneIcao(invalidPlaneIcao)
     self.datarefs = {}
     self.windows = {}
     self.userInterfaceIsActive = false
