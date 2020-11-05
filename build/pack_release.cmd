@@ -10,7 +10,7 @@ if %ERRORLEVEL% GTR 0 (
     exit(%ERRORLEVEL%)
 )
 
-set RELEASE_PACKAGE_FOLDER_PATH=.\RELEASE_PACKAGE
+set RELEASE_PACKAGE_FOLDER_PATH=.\TEMP\RELEASE_PACKAGE
 
 if exist %RELEASE_PACKAGE_FOLDER_PATH% (
     rmdir /S /Q %RELEASE_PACKAGE_FOLDER_PATH%
@@ -59,6 +59,7 @@ if %TAG%==TAGLESS (
     echo right after to see it in the Github 'Draft Release' page when re-running this task.
     goto :label_end
 ) else (
+    echo.
     echo Don't forget to push the release tag to make Github see it in the 'Draft Release' page.
 )
 

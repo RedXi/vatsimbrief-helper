@@ -26,7 +26,7 @@ for /F "tokens=*" %%A in ('type %FWL_PREFS_INI_PATH%') do (
     echo !line: =! >> %FILTERED_INI_PATH%
 )
 
-for /F "tokens=1,2 delims==" %%A in ('type TASK_OUTPUT\copyToXPlane_filtered_fwl_prefs.ini') do (
+for /F "tokens=1,2 delims==" %%A in ('type !TASK_OUTPUT_FOLDER_PATH!\copyToXPlane_filtered_fwl_prefs.ini') do (
     if %%A==DeveloperMode set DEV_MODE_SETTING=%%B
 )
 
