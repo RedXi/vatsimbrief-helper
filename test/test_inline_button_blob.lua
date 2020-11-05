@@ -1,6 +1,7 @@
-TestInlineButtonBlob = {}
 imguiStub = require("imgui_stub")
 vhfHelperStub = require("vhf_helper")
+
+TestInlineButtonBlob = {}
 
 function TestInlineButtonBlob:testRendersAllWidgetsInOrderWithProperNewlines()
     local someText = "Here it is"

@@ -1431,40 +1431,68 @@ local refreshVatsimDataTimer =
 --
 -- Initialization
 --
--- To deal with lazyly initialized resources, the initialization method is retried automatically
+-- To deal with lazily initialized resources, the initialization method is retried automatically
 -- until it succeeds once. For instance, it can check for datarefs and stop initialization if
 -- a required dataref is not yet initialized.
 --
 
-local vatsimbriefHelperIsInitialized = false
-local lazyInitializationTries = 0
+local LazyInitializationSingleton
+do
+  LazyInitialization = {
+    vatsimbriefHelperIsInitialized = false,
+    gaveUpAlready = false,
+    triesSoFar = 0,
+    Constants = {
+      maxTries = 100
+    }
+  }
 
-local vatsimbriefHelperIsInitialized = false
+  function LazyInitialization:_canInitializeNow()
+    if (VHFHelperEventBus == nil) then
+      return false
+    end
 
-function tryVatsimbriefHelperInit()
-  if vatsimbriefHelperIsInitialized then
-    return
+    return true
   end
 
-  if (lazyInitializationTries > 0 and lazyInitializationTries % 10 == 0) then
-    logMsg(
-      ("Vatsimbrief Helper: Lazy initialization is taking very long, tried %d times already."):format(
-        lazyInitializationTries
+  function LazyInitialization:_initializeNow()
+    VHFHelperEventBus.on(VHFHelperEventOnFrequencyChanged, onVHFHelperFrequencyChanged)
+  end
+
+  function LazyInitialization:tryVatsimbriefHelperInit()
+    if (self.gaveUpAlready or self.vatsimbriefHelperIsInitialized) then
+      return
+    end
+
+    self.triesSoFar = self.triesSoFar + 1
+
+    if (self.triesSoFar > self.Constants.maxTries) then
+      logMsg(
+        ("Vatsimbrief Helper: Lazy initialization is taking too long, giving up after %d tries."):format(
+          self.triesSoFar
+        )
       )
-    )
-  end
+      self.gaveUpAlready = true
+      return
+    end
 
-  -- Initialization tasks go here ...
-  if (VHFHelperEventBus == nil) then
-    return
-  end
-  VHFHelperEventBus.on(VHFHelperEventOnFrequencyChanged, onVHFHelperFrequencyChanged)
+    if (self.triesSoFar > 0 and self.triesSoFar % 10 == 0) then
+      logMsg(
+        ("Vatsimbrief Helper: Lazy initialization is taking very long, tried %d times already."):format(self.triesSoFar)
+      )
+    end
 
-  logMsg("Vatsimbrief Helper: Lazy initialization finished.")
-  vatsimbriefHelperIsInitialized = true
+    if (not self:_canInitializeNow()) then
+      return
+    end
+
+    self:_initializeNow()
+    logMsg("Vatsimbrief Helper: Lazy initialization finished.")
+    self.vatsimbriefHelperIsInitialized = true
+  end
 end
 
-do_often("tryVatsimbriefHelperInit()")
+do_often("LazyInitialization:tryVatsimbriefHelperInit()")
 
 --
 -- Flightplan UI handling
@@ -1712,7 +1740,7 @@ function destroyVatsimbriefHelperFlightplanWindow()
 end
 
 function createVatsimbriefHelperFlightplanWindow()
-  tryVatsimbriefHelperInit()
+  LazyInitialization:tryVatsimbriefHelperInit()
   if vatsimbriefHelperFlightplanWindow == nil then -- "Singleton window"
     setConfiguredFlightPlanWindowVisibility(true)
     saveConfiguration()
@@ -2275,7 +2303,7 @@ function destroyVatsimbriefHelperAtcWindow()
 end
 
 function createVatsimbriefHelperAtcWindow()
-  tryVatsimbriefHelperInit()
+  LazyInitialization:tryVatsimbriefHelperInit()
   if vatsimbriefHelperAtcWindow == nil then -- "Singleton window"
     setConfiguredAtcWindowVisibility(true)
     refreshVatsimDataNow()
@@ -2587,7 +2615,7 @@ function destroyVatsimbriefHelperControlWindow()
 end
 
 function createVatsimbriefHelperControlWindow()
-  tryVatsimbriefHelperInit()
+  LazyInitialization:tryVatsimbriefHelperInit()
   if vatsimbriefHelperControlWindow == nil then -- "Singleton window"
     vatsimbriefHelperControlWindow = float_wnd_create(900, 300, 1, true)
     float_wnd_set_title(vatsimbriefHelperControlWindow, "Vatsimbrief Helper Control")
@@ -2655,3 +2683,9 @@ create_command(
   "",
   ""
 )
+
+vatsimbriefHelperPackageExport = {}
+vatsimbriefHelperPackageExport.test = {}
+vatsimbriefHelperPackageExport.test.LazyInitialization = LazyInitialization
+
+return

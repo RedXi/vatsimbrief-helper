@@ -6,6 +6,7 @@ local imguiStub = require("imgui_stub")
 local vhfHelper = dofile("scripts/vatsimbrief-helper.lua")
 flyWithLuaStub:suppressLogMessagesBeginningWith("Vatsimbrief Helper using '")
 
+require("test_initialization")
 require("test_inline_button_blob")
 
 local runner = luaUnit.LuaUnit.new()

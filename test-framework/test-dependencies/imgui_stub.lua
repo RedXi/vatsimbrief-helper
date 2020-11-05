@@ -42,7 +42,8 @@ imgui = {
         TextUnformatted = "TextUnformatted",
         SameLine = "SameLine",
         PushStyleColor = "PushStyleColor",
-        PopStyleColor = "PopStyleColor"
+        PopStyleColor = "PopStyleColor",
+        Separator = "Separator"
     },
     LastFrameCommandList = {},
     SetWindowFontScale = function(value)
@@ -98,6 +99,15 @@ imgui = {
         end
 
         return false
+    end,
+    PushID = function(value)
+        imgui.idStackSize = imgui.idStackSize + 1
+    end,
+    PopID = function()
+        imgui.idStackSize = imgui.idStackSize - 1
+    end,
+    Separator = function(value)
+        table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.Separator, title = value})
     end
 }
 
@@ -159,6 +169,7 @@ function imgui:startFrame()
     self.buttonPressed = false
     self.styleVarStackSize = 0
     self.styleColorStackSize = 0
+    self.idStackSize = 0
     self.LastFrameCommandList = {}
 end
 
@@ -179,6 +190,7 @@ function imgui:endFrame()
 
     luaUnit.assertEquals(self.styleVarStackSize, 0)
     luaUnit.assertEquals(self.styleColorStackSize, 0)
+    luaUnit.assertEquals(self.idStackSize, 0)
 end
 
 function imgui:wasWatchStringFound()
