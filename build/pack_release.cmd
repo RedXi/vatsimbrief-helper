@@ -41,7 +41,7 @@ if %ERRORLEVEL% NEQ 0 (
 echo.
 
 if %TAG%==TAGLESS (
-    echo [93m%Tagless[0m[92m [92mrelease packages successfully generated[0m. Here they are:
+    echo [93mTagless[0m[92m [92mrelease packages successfully generated[0m. Here they are:
 ) else (
     echo [92mRelease packages for version [0m[93m%TAG%[0m[92m successfully generated[0m. Here they are:
 )
