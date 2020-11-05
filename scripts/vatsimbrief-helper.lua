@@ -578,7 +578,11 @@ local function performDefaultHttpGetRequest(url, resultCallback, errorCallback, 
   local content, code, headers, status = http.request(url)
   logMsg(("Request to URL '%s' finished"):format(url))
 
-  if type(content) ~= "string" or type(code) ~= "number" or type(headers) ~= "table" or type(status) ~= "string" then
+  if
+    type(content) ~= "string" or type(code) ~= "number" or type(headers) ~= "table" or type(status) ~= "string" or
+      code == 404 or
+      code == 500
+   then
     logMsg(("Request URL: %s, FAILURE: Status = %s, code = %s"):format(url, status, code))
     errorCallback({errorCode = HttpDownloadErrors.NETWORK, userData = userData})
   else
@@ -850,7 +854,7 @@ function downloadFlightplan(typeName, now, forceAnotherDownload)
            then -- ... or needs to be retried
             FlightPlanDownload.MapTypeToAttemptTimestamp[typeName] = now -- Save attempt timestamp for retrying later
             FlightPlanDownload.SetOfDownloadingTypes[typeName] = true -- Set immediately to prevent race conditions leading to multiple downloads launching. However, always remember to turn it off!
-            local url = FlightPlanDownload.FilesBaseUrl .. "-" .. FlightPlanDownload.FileTypesAndNames[typeName]
+            local url = FlightPlanDownload.FilesBaseUrl .. FlightPlanDownload.FileTypesAndNames[typeName]
             logMsg(
               ("Download of file of type '%s' for flight plan '%s' starting"):format(
                 typeName,
@@ -863,6 +867,7 @@ function downloadFlightplan(typeName, now, forceAnotherDownload)
             --  http://www.simbrief.com/system/briefing.fmsdl.php?formatget=flightplans/<TypeName>
             -- HTTP 301 Redirects are unfortunately not working with this library. :-(
             -- Keep the final URL in hardcoded for now. Ouch.
+            --logMsg("File type of download: " .. FlightPlanDownload.FileTypesAndNames[typeName])
             if getExtensionOfFileName(FlightPlanDownload.FileTypesAndNames[typeName]) ~= ".pdf" then
               url =
                 "http://www.simbrief.com/system/briefing.fmsdl.php?formatget=flightplans/" ..
@@ -2494,7 +2499,7 @@ function buildVatsimbriefHelperControlWindowCanvas()
           setFlightplanFileDownloadEnabled(fileTypes[i], enabled)
           saveFlightPlanFilesForDownload()
           if enabled then
-            downloadFlightplan(fileTypes[i])
+            downloadFlightPlanAgain(fileTypes[i])
           end
         end
         if statusOnOff == true then
