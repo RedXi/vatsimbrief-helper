@@ -39,7 +39,10 @@ flyWithLuaStub = {
     datarefs = {},
     windows = {},
     userInterfaceIsActive = false,
-    suppressLogMessageString = nil
+    suppressLogMessageString = nil,
+    doSometimesFunctions = {},
+    doOftenFunctions = {},
+    doEveryFrameFunctions = {}
 }
 
 function logMsg(stringToLog)
@@ -67,6 +70,9 @@ function flyWithLuaStub:reset()
     self.datarefs = {}
     self.windows = {}
     self.userInterfaceIsActive = false
+    self.doSometimesFunctions = {}
+    self.doOftenFunctions = {}
+    self.doEveryFrameFunctions = {}
 end
 
 function flyWithLuaStub:createSharedDatarefHandle(datarefId, datarefType, initialData)
@@ -105,15 +111,29 @@ function flyWithLuaStub:closeWindow(window)
 end
 
 function flyWithLuaStub:runNextFrameAfterExternalWritesToDatarefs()
-    if (self.doSometimesFunction ~= nil) then
-        self.doSometimesFunction()
+    local functionCount = nil
+
+    functionCount = 0
+    for _, f in pairs(self.doSometimesFunctions) do
+        functionCount = functionCount + 1
+        f()
     end
-    if (self.doOftenFunction ~= nil) then
-        self.doOftenFunction()
+    -- logMsg(("FlyWithLua STUB: Called num=%d doSometimes functions"):format(functionCount))
+
+    functionCount = 0
+    for _, f in pairs(self.doOftenFunctions) do
+        functionCount = functionCount + 1
+        f()
     end
-    if (self.doEveryFrameFunction ~= nil) then
-        self.doEveryFrameFunction()
+
+    functionCount = 0
+    -- logMsg(("FlyWithLua STUB: Called num=%d doOften functions"):format(functionCount))
+
+    for _, f in pairs(self.doEveryFrameFunctions) do
+        functionCount = functionCount + 1
+        f()
     end
+    -- logMsg(("FlyWithLua STUB: Called num=%d doEveryFrame functions"):format(functionCount))
 
     self:readbackAllWritableDatarefs()
 
@@ -197,15 +217,15 @@ function dataref(localDatarefVariable, globalDatarefIdName, accessType)
 end
 
 function do_sometimes(doSometimesExpression)
-    flyWithLuaStub.doSometimesFunction = loadstring(doSometimesExpression)
+    table.insert(flyWithLuaStub.doSometimesFunctions, loadstring(doSometimesExpression))
 end
 
 function do_often(doOftenExpression)
-    flyWithLuaStub.doOftenFunction = loadstring(doOftenExpression)
+    table.insert(flyWithLuaStub.doOftenFunctions, loadstring(doOftenExpression))
 end
 
 function do_every_frame(doEveryFrameExpression)
-    flyWithLuaStub.doEveryFrameFunction = loadstring(doEveryFrameExpression)
+    table.insert(flyWithLuaStub.doEveryFrameFunctions, loadstring(doEveryFrameExpression))
 end
 
 function XPLMFindDataRef(datarefName)
@@ -222,6 +242,7 @@ end
 
 function XPLMSetDatai(datarefName, newDataAsInteger)
     local d = flyWithLuaStub.datarefs[datarefName]
+    luaUnit.assertNotNil(d)
     luaUnit.assertEquals(d.type, flyWithLuaStub.Constants.DatarefTypeInteger)
     d.data = newDataAsInteger
 

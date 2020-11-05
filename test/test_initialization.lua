@@ -8,28 +8,24 @@ function TestInitialization:setUp()
 end
 
 function TestInitialization:testLazyInitializationIsGivingUpEventually()
-    local vatsimbriefHelper = dofile("scripts/vatsimbrief-helper.lua")
     flyWithLuaStub:reset()
-    flyWithLuaStub:bootstrapScriptUserInterface()
-    flyWithLuaStub:runNextFrameAfterExternalWritesToDatarefs()
+    local vatsimbriefHelper = dofile("scripts/vatsimbrief-helper.lua")
 
     luaUnit.assertEquals(vatsimbriefHelperPackageExport.test.LazyInitialization.gaveUpAlready, false)
     for i = 1, vatsimbriefHelperPackageExport.test.LazyInitialization.Constants.maxTries * 10 do
-        flyWithLuaStub:runNextFrameAfterExternalWritesToDatarefs()
+        vatsimbriefHelperPackageExport.test.LazyInitialization:tryVatsimbriefHelperInit()
     end
     luaUnit.assertEquals(vatsimbriefHelperPackageExport.test.LazyInitialization.gaveUpAlready, true)
 end
 
 function TestInitialization:testLazyInitializationIsCatchingUpEventuallyWhenConditionsAreMet()
-    local vatsimbriefHelper = dofile("scripts/vatsimbrief-helper.lua")
     flyWithLuaStub:reset()
-    flyWithLuaStub:bootstrapScriptUserInterface()
-    flyWithLuaStub:runNextFrameAfterExternalWritesToDatarefs()
+    local vatsimbriefHelper = dofile("scripts/vatsimbrief-helper.lua")
 
     luaUnit.assertEquals(vatsimbriefHelperPackageExport.test.LazyInitialization.vatsimbriefHelperIsInitialized, false)
 
     VHFHelperEventBus = eventBusStub.new()
-    flyWithLuaStub:runNextFrameAfterExternalWritesToDatarefs()
+    vatsimbriefHelperPackageExport.test.LazyInitialization:tryVatsimbriefHelperInit()
 
     luaUnit.assertEquals(vatsimbriefHelperPackageExport.test.LazyInitialization.vatsimbriefHelperIsInitialized, true)
 end
