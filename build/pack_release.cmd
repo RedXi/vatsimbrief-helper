@@ -38,17 +38,44 @@ if %ERRORLEVEL% NEQ 0 (
     exit(%ERRORLEVEL%)
 )
 
+echo.
+
 if %TAG%==TAGLESS (
-    echo [93m%TAG%[0m[92m [92mrelease packages successfully generated[0m. Here they are:
+    echo [93m%Tagless[0m[92m [92mrelease packages successfully generated[0m. Here they are:
 ) else (
     echo [92mRelease packages for version [0m[93m%TAG%[0m[92m successfully generated[0m. Here they are:
 )
 echo.
-echo     - %RELEASE_PACKAGE_FOLDER_PATH%\%RELEASE_FILE_NAME_PREFIX%-%TAG%-%COMMIT_HASH%.exe
-echo     - %RELEASE_PACKAGE_FOLDER_PATH%\%RELEASE_FILE_NAME_PREFIX%-%TAG%-%COMMIT_HASH%.zip
+echo     [94m%RELEASE_PACKAGE_FOLDER_PATH%\%RELEASE_FILE_NAME_PREFIX%-%TAG%-%COMMIT_HASH%.exe[0m
+echo     [94m%RELEASE_PACKAGE_FOLDER_PATH%\%RELEASE_FILE_NAME_PREFIX%-%TAG%-%COMMIT_HASH%.zip[0m
 
 if %TAG%==TAGLESS (
     echo.
     echo Your release is tagless, which is not a problem.
-    echo If you like to tag it, use git to tag the current repository HEAD and re-run this task.
+    echo If you like to tag it, [93muse git to tag[0m the current repository HEAD and re-run this task.
+    echo [93mPush the tag[0m to git right after to see it in the Github 'Draft Release' page.
+    goto :label_end
 )
+
+set OPEN_RELEASE_PAGES_TIMEOUT=5
+setlocal enabledelayedexpansion
+
+set DEFAULT_GITHUB_REPO_URL_WITHOUT_QUOTES=%DEFAULT_GITHUB_REPO_URL:"=%
+
+if !GITHUB_REPO_URL!==!DEFAULT_GITHUB_REPO_URL_WITHOUT_QUOTES! (
+    echo.
+    echo You didn't set a [93mGithub URL[0m for your project yet. If you like to have a prepared 'Draft Release' page open after generating
+    echo a new tagged release, update the Github project URL in [94m.\build_configuration.cmd[0m and re-run this task.
+    echo.
+    echo Opening release package folder in %OPEN_RELEASE_PAGES_TIMEOUT% seconds ...
+    timeout /T %OPEN_RELEASE_PAGES_TIMEOUT%
+    start "" .
+) else (
+    echo.
+    echo Opening release package folder and Github 'Draft Release' in %OPEN_RELEASE_PAGES_TIMEOUT% seconds ...
+    timeout /T %OPEN_RELEASE_PAGES_TIMEOUT%
+    start "" %GITHUB_REPO_URL%/releases/new?tag=%TAG%^&title=RELEASE_TITLE_HERE^&body=RELEASE_DESCRIPTION_HERE
+    start "" .
+)
+
+:label_end

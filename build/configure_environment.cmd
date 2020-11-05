@@ -16,17 +16,31 @@ call LOCAL_ENVIRONMENT_CONFIGURATION.cmd
 set LUA_DEFAULT_MODULES_PATH=%LUA_DEFAULT_MODULES_PATH:"=%
 set XPLANE_PATH=%XPLANE_PATH:"=%
 
+set DEFAULT_READABLE_SCRIPT_NAME="___UPDATE build_configuration_cmd"
+set DEFAULT_RELEASE_FILE_NAME_PREFIX="___UPDATE_build_configuration_cmd"
+set DEFAULT_GITHUB_REPO_URL="https://github.com/____UPDATE_REPO_URL_in_build_configuration_cmd"
+
+:label_regenerate_build_configuration
 if not exist build_configuration.cmd (
     (
-        echo set READABLE_SCRIPT_NAME="___UPDATE build_configuration_cmd"
-        echo set RELEASE_FILE_NAME_PREFIX="___UPDATE_build_configuration_cmd"
+        echo set READABLE_SCRIPT_NAME=%DEFAULT_READABLE_SCRIPT_NAME%
+        echo set RELEASE_FILE_NAME_PREFIX=%DEFAULT_RELEASE_FILE_NAME_PREFIX%
+        echo set GITHUB_REPO_URL=%DEFAULT_GITHUB_REPO_URL%
     ) > build_configuration.cmd
 )
 
 call build_configuration.cmd
 
+if not defined GITHUB_REPO_URL (
+    set DEFAULT_READABLE_SCRIPT_NAME=%READABLE_SCRIPT_NAME%
+    set DEFAULT_RELEASE_FILE_NAME_PREFIX=%RELEASE_FILE_NAME_PREFIX%
+    del build_configuration.cmd
+    goto :label_regenerate_build_configuration
+)
+
 set READABLE_SCRIPT_NAME=%READABLE_SCRIPT_NAME:"=%
 set RELEASE_FILE_NAME_PREFIX=%RELEASE_FILE_NAME_PREFIX:"=%
+set GITHUB_REPO_URL=%GITHUB_REPO_URL:"=%
 
 set TASK_OUTPUT_FOLDER_PATH=TASK_OUTPUT
 if not exist %TASK_OUTPUT_FOLDER_PATH% (
