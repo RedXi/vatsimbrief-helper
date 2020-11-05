@@ -43,9 +43,24 @@ imgui = {
         SameLine = "SameLine",
         PushStyleColor = "PushStyleColor",
         PopStyleColor = "PopStyleColor",
-        Separator = "Separator"
+        Separator = "Separator",
+        InputText = "InputText",
+        SliderFloat = "SliderFloat",
+        Checkbox = "Checkbox"
     },
     LastFrameCommandList = {},
+    Checkbox = function(title, initialValue)
+        imgui:checkStringForWatchStrings(title)
+        table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.Checkbox, description = title})
+    end,
+    SliderFloat = function(title, two, three, four, five)
+        imgui:checkStringForWatchStrings(title)
+        table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.SliderFloat, description = title})
+    end,
+    InputText = function(title, content, something)
+        imgui:checkStringForWatchStrings(title)
+        table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.InputText, description = title})
+    end,
     SetWindowFontScale = function(value)
     end,
     PushStyleVar_2 = function(value, value2, value3)
@@ -77,10 +92,8 @@ imgui = {
     SmallButton = function(value)
         imgui:checkStringForWatchStrings(value)
         table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.SmallButton, title = value})
-        if
-            (value:match(imgui.Constants.ButtonTitleWithIdMatcherPattern) ==
-                imgui.pressButtonWithThisTitleProgrammatically)
-         then
+
+        if (imgui:matchButtonTitle(value) == imgui.pressButtonWithThisTitleProgrammatically) then
             imgui.buttonPressed = true
             return true
         end
@@ -90,10 +103,8 @@ imgui = {
     Button = function(value)
         imgui:checkStringForWatchStrings(value)
         table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.Button, title = value})
-        if
-            (value:match(imgui.Constants.ButtonTitleWithIdMatcherPattern) ==
-                imgui.pressButtonWithThisTitleProgrammatically)
-         then
+
+        if (imgui:matchButtonTitle(value) == imgui.pressButtonWithThisTitleProgrammatically) then
             imgui.buttonPressed = true
             return true
         end
@@ -136,7 +147,16 @@ function imgui:findNextMatch(startIndex, commandType, textString)
 end
 
 function imgui:matchButtonTitle(title)
-    return title:match(self.Constants.ButtonTitleWithIdMatcherPattern)
+    local titleIdIndex = title:find("##")
+    if (titleIdIndex == nil) then
+        return title
+    end
+
+    if (titleIdIndex == 1) then
+        return ""
+    end
+
+    return title:sub(1, titleIdIndex - 1)
 end
 
 function imgui:getCommandFromList(commandIndex)

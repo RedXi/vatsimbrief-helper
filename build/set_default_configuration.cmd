@@ -1,0 +1,4 @@
+@echo off
+set DEFAULT_READABLE_SCRIPT_NAME="___UPDATE build_configuration_cmd"
+set DEFAULT_RELEASE_FILE_NAME_PREFIX="___UPDATE_build_configuration_cmd"
+set DEFAULT_GITHUB_REPO_URL="https://github.com/____UPDATE_REPO_URL_in_build_configuration_cmd"
