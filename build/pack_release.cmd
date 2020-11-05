@@ -1,10 +1,10 @@
 @echo off
 call .\build\configure_environment.cmd
 
-for /F "tokens=*" %%h in ('git tag --points-at HEAD') do (SET TAG=%%h)
+for /F "tokens=*" %%h in ('%GIT_EXECUTABLE% tag --points-at HEAD') do (SET TAG=%%h)
 if not defined TAG (set tag=TAGLESS)
 
-for /F "tokens=*" %%h in ('git rev-parse --short HEAD') do (SET COMMIT_HASH=%%h)
+for /F "tokens=*" %%h in ('%GIT_EXECUTABLE% rev-parse --short HEAD') do (SET COMMIT_HASH=%%h)
 
 if %ERRORLEVEL% GTR 0 (
     exit(%ERRORLEVEL%)

@@ -8,6 +8,7 @@ if not exist LOCAL_ENVIRONMENT_CONFIGURATION.cmd (
         echo set SEVEN_ZIP_EXECUTABLE="C:\Program Files\7-Zip\7z.exe"
         echo set PACKETSENDER_EXECUTABLE="C:\Program Files\PacketSender\packetsender.com"
         echo set XPLANE_PATH="C:\X-Plane 11"
+        echo set GIT_EXECUTABLE="C:\Program Files\Git\bin\git.exe"
     ) > LOCAL_ENVIRONMENT_CONFIGURATION.cmd
 )
 
