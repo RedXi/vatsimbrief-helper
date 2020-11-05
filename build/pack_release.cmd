@@ -10,7 +10,7 @@ if %ERRORLEVEL% GTR 0 (
     exit(%ERRORLEVEL%)
 )
 
-set RELEASE_PACKAGE_FOLDER_PATH=RELEASE_PACKAGE
+set RELEASE_PACKAGE_FOLDER_PATH=.\RELEASE_PACKAGE
 
 if exist %RELEASE_PACKAGE_FOLDER_PATH% (
     rmdir /S /Q %RELEASE_PACKAGE_FOLDER_PATH%
@@ -42,19 +42,24 @@ echo.
 
 if %TAG%==TAGLESS (
     echo [93mTagless[0m[92m [92mrelease packages successfully generated[0m. Here they are:
+    echo.
+    echo     %RELEASE_PACKAGE_FOLDER_PATH%\%RELEASE_FILE_NAME_PREFIX%-%TAG%-%COMMIT_HASH%.exe
+    echo     %RELEASE_PACKAGE_FOLDER_PATH%\%RELEASE_FILE_NAME_PREFIX%-%TAG%-%COMMIT_HASH%.zip
 ) else (
-    echo [92mRelease packages for version [0m[93m%TAG%[0m[92m successfully generated[0m. Here they are:
+    echo [92mRelease packages for version %TAG% successfully generated[0m. Here they are:
+    echo.
+    echo     [94m%RELEASE_PACKAGE_FOLDER_PATH%\%RELEASE_FILE_NAME_PREFIX%-[92m%TAG%[0m[94m-%COMMIT_HASH%.exe[0m
+    echo     [94m%RELEASE_PACKAGE_FOLDER_PATH%\%RELEASE_FILE_NAME_PREFIX%-[92m%TAG%[0m[94m-%COMMIT_HASH%.zip[0m
 )
-echo.
-echo     [94m%RELEASE_PACKAGE_FOLDER_PATH%\%RELEASE_FILE_NAME_PREFIX%-%TAG%-%COMMIT_HASH%.exe[0m
-echo     [94m%RELEASE_PACKAGE_FOLDER_PATH%\%RELEASE_FILE_NAME_PREFIX%-%TAG%-%COMMIT_HASH%.zip[0m
 
 if %TAG%==TAGLESS (
     echo.
     echo Your release is tagless, which is not a problem.
-    echo If you like to tag it, [93muse git to tag[0m the current repository HEAD and re-run this task.
-    echo [93mPush the tag[0m to git right after to see it in the Github 'Draft Release' page.
+    echo If you like to tag it, use git to [93mtag the current repository HEAD[0m and [93mpush the tag[0m
+    echo right after to see it in the Github 'Draft Release' page when re-running this task.
     goto :label_end
+) else (
+    echo Don't forget to push the release tag to make Github see it in the 'Draft Release' page.
 )
 
 set OPEN_RELEASE_PAGES_TIMEOUT=5
