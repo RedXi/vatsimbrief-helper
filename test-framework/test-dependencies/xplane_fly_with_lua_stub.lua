@@ -110,7 +110,7 @@ function flyWithLuaStub:bootstrapAllMacros()
     end
 end
 
-function flyWithLuaStub:activateAllMacrosNow(activate)
+function flyWithLuaStub:activateAllMacros(activate)
     for _, macro in pairs(self.macros) do
         if (activate) then
             luaUnit.assertIsFalse(macro.isActiveNow)
