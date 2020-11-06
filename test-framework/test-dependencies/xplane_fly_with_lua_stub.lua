@@ -26,7 +26,7 @@ SOFTWARE.
 local luaUnit = require("luaunit")
 local imguiStub = require("imgui_stub")
 
-SCRIPT_DIRECTORY = "."
+SCRIPT_DIRECTORY = ".\\"
 local invalidPlaneIcao = "...."
 PLANE_ICAO = invalidPlaneIcao
 
