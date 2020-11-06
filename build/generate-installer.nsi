@@ -1,7 +1,7 @@
 Name "$%READABLE_SCRIPT_NAME% $%TAG% ($%COMMIT_HASH%)"
 RequestExecutionLevel admin
 Unicode True
-InstallDir "C:\X-Plane Folder"
+InstallDir "C:\X-Plane 11"
 
 Page directory 
 Page components checkDirectoryFunction
