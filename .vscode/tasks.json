@@ -83,7 +83,7 @@
                 },
                 {
                     "quoting": "escape",
-                    "value": "test\\test_suite.lua"
+                    "value": "test\\test_suite_generic.lua"
                 }
             ],
             "presentation": {

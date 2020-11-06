@@ -16,6 +16,8 @@ Perks:
 Required (Coding + Testing):
 * Vanilla Windows 10
 * Visual Studio Code: https://code.visualstudio.com/
+* Install VS Code extensions:
+  * vscode-lua (linting): https://marketplace.visualstudio.com/items?itemName=trixnz.vscode-lua
 * Install Lua: https://github.com/rjpcomputing/luaforwindows
 * Download the A320 NORMAL CHECKLIST repository and open the workspace in VS Code!
 * Run default build task via **CTRL+SHIFT+B** once and update local paths in:
@@ -27,7 +29,6 @@ Optional:
 * Install NSIS: https://nsis.sourceforge.io/ (EXE release installer)
 * Install Packetsender: https://packetsender.com/ (X-Plane remote command interface)
 * Install VS Code extensions:
-  * vscode-lua (linting): https://marketplace.visualstudio.com/items?itemName=trixnz.vscode-lua
   * Code Runner (lets you run selected snippets of code): https://marketplace.visualstudio.com/items?itemName=formulahendry.code-runner
   * NSIS (linting): https://marketplace.visualstudio.com/items?itemName=idleberg.nsis
 * Update local paths and plugin name in:
