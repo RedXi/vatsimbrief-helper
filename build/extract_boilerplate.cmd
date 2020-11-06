@@ -11,7 +11,6 @@ xcopy /Y .\test-framework\*.* %DEV_ENV_EXTRACT_FOLDER%\test-framework\*.*
 xcopy /Y /S /E .\test-framework\test-dependencies\ %DEV_ENV_EXTRACT_FOLDER%\test-framework\test-dependencies\
 xcopy /Y .\DEVELOPMENT_ENVIRONMENT.md %DEV_ENV_EXTRACT_FOLDER%\
 xcopy /Y .\.gitignore %DEV_ENV_EXTRACT_FOLDER%\
-xcopy /Y .\test\test_suite_generic.lua %DEV_ENV_EXTRACT_FOLDER%\test\
 
 echo.
 echo [92mOK[0m: Extracted generic parts of current development environment to [94m%DEV_ENV_EXTRACT_FOLDER%[0m
