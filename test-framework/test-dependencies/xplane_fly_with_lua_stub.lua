@@ -148,7 +148,7 @@ function flyWithLuaStub:isMacroActive(macroName)
     return false
 end
 
-function flyWithLuaStub:closeWindow(window)
+function flyWithLuaStub:closeWindowByHandle(window)
     luaUnit.assertTrue(window.isOpen)
     luaUnit.assertFalse(window.wasDestroyed)
     window.closeFunction()
@@ -196,6 +196,21 @@ function flyWithLuaStub:writeDatarefValueToLocalVariables(globalDatarefIdName)
     for localVariableName, localVariable in pairs(d.localVariables) do
         localVariable.writeFunction = loadstring(localVariableName .. " = " .. d.data)
         localVariable.writeFunction()
+    end
+end
+
+function flyWithLuaStub:closeWindowByTitle(windowTitle)
+    for _, window in pairs(self.windows) do
+        if (window.title == nil) then
+            logMsg(
+                ("Warning: Titleless window imgui builder=%s onclose=%s found."):format(
+                    window.imguiBuilderFunctionName or "NIL",
+                    window.closeFunctionName or "NIL"
+                )
+            )
+        elseif (window.title == windowTitle) then
+            self:closeWindowByHandle(window)
+        end
     end
 end
 
@@ -295,14 +310,17 @@ function float_wnd_create(width, height, something, whatever)
 end
 
 function float_wnd_set_title(window, newTitle)
+    window.title = newTitle
 end
 
 function float_wnd_set_onclose(window, newCloseFunctionName)
     window.closeFunction = loadstring(newCloseFunctionName .. "()")
+    window.closeFunctionName = newCloseFunctionName
 end
 
 function float_wnd_set_imgui_builder(window, newImguiBuilderFunctionName)
     window.imguiBuilderFunction = loadstring(newImguiBuilderFunctionName .. "()")
+    window.imguiBuilderFunctionName = newImguiBuilderFunctionName
 end
 
 function float_wnd_destroy(window)
