@@ -2692,5 +2692,6 @@ create_command(
 vatsimbriefHelperPackageExport = {}
 vatsimbriefHelperPackageExport.test = {}
 vatsimbriefHelperPackageExport.test.LazyInitialization = LazyInitialization
+vatsimbriefHelperPackageExport.test.Configuration = Configuration
 
 return

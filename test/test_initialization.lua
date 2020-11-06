@@ -5,12 +5,11 @@ TestInitialization = {}
 
 function TestInitialization:setUp()
     VHFHelperEventBus = nil
+    flyWithLuaStub:reset()
+    vatsimbriefHelper = dofile("scripts/vatsimbrief-helper.lua")
 end
 
 function TestInitialization:testLazyInitializationIsGivingUpEventually()
-    flyWithLuaStub:reset()
-    local vatsimbriefHelper = dofile("scripts/vatsimbrief-helper.lua")
-
     luaUnit.assertEquals(vatsimbriefHelperPackageExport.test.LazyInitialization.gaveUpAlready, false)
     for i = 1, vatsimbriefHelperPackageExport.test.LazyInitialization.Constants.maxTries * 10 do
         vatsimbriefHelperPackageExport.test.LazyInitialization:tryVatsimbriefHelperInit()
@@ -19,9 +18,6 @@ function TestInitialization:testLazyInitializationIsGivingUpEventually()
 end
 
 function TestInitialization:testLazyInitializationIsCatchingUpEventuallyWhenConditionsAreMet()
-    flyWithLuaStub:reset()
-    local vatsimbriefHelper = dofile("scripts/vatsimbrief-helper.lua")
-
     luaUnit.assertEquals(vatsimbriefHelperPackageExport.test.LazyInitialization.vatsimbriefHelperIsInitialized, false)
 
     VHFHelperEventBus = eventBusStub.new()

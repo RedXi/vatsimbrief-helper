@@ -13,8 +13,9 @@ echo [91mSending FlyWithLua reload package to X-Plane instance failed[0m.
 exit(%ERRORLEVEL%)
 
 :label_send_ok
+echo [92mOK[0m: Reload-all-Lua-script-files packet sent successfully. Logs from running scripts are going to [94m"%XPLANE_PATH%\Log.txt"[0m
+
 set FWL_PREFS_INI_PATH="%XPLANE_PATH%\Resources\plugins\FlyWithLua\fwl_prefs.ini"
-echo [92mOK[0m: Reload-all-Lua-script-files packet sent successfully.
 
 setlocal enabledelayedexpansion
 set FILTERED_INI_PATH=%TASK_OUTPUT_FOLDER_PATH%\copyToXPlane_filtered_fwl_prefs.ini
@@ -33,7 +34,7 @@ for /F "tokens=1,2 delims==" %%A in ('type !TASK_OUTPUT_FOLDER_PATH!\copyToXPlan
 if %DEV_MODE_SETTING%==0 (
     echo.
     echo Your FlyWithLua installation has [93mdeveloper mode disabled[0m and moves erroneous scripts to Quarantine automatically.
-    echo To remove yourself from the burden of moving them back back manually from Quarantine, consider enabling developer mode in [94m%FWL_PREFS_INI_PATH:"=%[0m
+    echo To remove yourself from the burden of moving them back back manually from Quarantine, consider enabling developer mode in [94m%FWL_PREFS_INI_PATH%[0m
 )
 
 set ERRORLEVEL=0

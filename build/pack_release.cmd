@@ -1,10 +1,12 @@
 @echo off
 call .\build\configure_environment.cmd
 
-for /F "tokens=*" %%h in ('%GIT_EXECUTABLE% tag --points-at HEAD') do (SET TAG=%%h)
+setlocal enabledelayedexpansion
+
+for /F "tokens=*" %%h in ('%GIT_EXECUTABLE% tag --points-at HEAD') do (set TAG=%%h)
 if not defined TAG (set tag=TAGLESS)
 
-for /F "tokens=*" %%h in ('%GIT_EXECUTABLE% rev-parse --short HEAD') do (SET COMMIT_HASH=%%h)
+for /F "tokens=*" %%h in ('%GIT_EXECUTABLE% rev-parse --short HEAD') do (set COMMIT_HASH=%%h)
 
 if %ERRORLEVEL% GTR 0 (
     exit(%ERRORLEVEL%)
@@ -17,6 +19,12 @@ if exist %RELEASE_PACKAGE_FOLDER_PATH% (
 )
 
 mkdir %RELEASE_PACKAGE_FOLDER_PATH%
+
+set DEFAULT_RELEASE_FILE_NAME_PREFIX_WITHOUT_QUOTES=%DEFAULT_RELEASE_FILE_NAME_PREFIX:"=%
+set DEFAULT_READABLE_SCRIPT_NAME_WITHOUT_QUOTES=%DEFAULT_READABLE_SCRIPT_NAME:"=%
+
+if !RELEASE_FILE_NAME_PREFIX!==!DEFAULT_RELEASE_FILE_NAME_PREFIX_WITHOUT_QUOTES! goto :label_prompt_update_build_configuration
+if !READABLE_SCRIPT_NAME!==!DEFAULT_READABLE_SCRIPT_NAME_WITHOUT_QUOTES! goto :label_prompt_update_build_configuration
 
 %NSIS_EXECUTABLE% "/XOutFile ..\%RELEASE_PACKAGE_FOLDER_PATH%\%RELEASE_FILE_NAME_PREFIX%-%TAG%-%COMMIT_HASH%.exe" build\generate-installer.nsi
 if %ERRORLEVEL% NEQ 0 (
@@ -64,7 +72,6 @@ if %TAG%==TAGLESS (
 )
 
 set OPEN_RELEASE_PAGES_TIMEOUT=5
-setlocal enabledelayedexpansion
 
 set DEFAULT_GITHUB_REPO_URL_WITHOUT_QUOTES=%DEFAULT_GITHUB_REPO_URL:"=%
 
@@ -83,5 +90,12 @@ if !GITHUB_REPO_URL!==!DEFAULT_GITHUB_REPO_URL_WITHOUT_QUOTES! (
     start "" %GITHUB_REPO_URL%/releases/new?tag=%TAG%^&title=RELEASE_TITLE_HERE^&body=RELEASE_DESCRIPTION_HERE
     start "" .
 )
+
+:goto label_end
+
+    :label_prompt_update_build_configuration
+    echo Your current build configuration still contains [93mdefault values[0m. To build a proper release,
+    echo update project name and release file name in [94m.\build_configuration.cmd[0m
+    goto :label_end
 
 :label_end
