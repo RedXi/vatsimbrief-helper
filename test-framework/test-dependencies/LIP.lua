@@ -23,10 +23,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --]]
-local LuaIniParserStub = {}
+local LuaIniParserStub = {
+	fileContent = {}
+}
+
+function LuaIniParserStub:setFileContentBeforeLoad(value)
+	LuaIniParserStub.fileContent = value
+end
 
 function LuaIniParserStub.load(fileName)
-	return {}
+	return LuaIniParserStub.fileContent
 end
 
 function LuaIniParserStub.save(fileName, data)
