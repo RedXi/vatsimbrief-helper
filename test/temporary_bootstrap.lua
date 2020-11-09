@@ -6,8 +6,9 @@ function TestTemporaryBootstrap:testRunVatsimbriefHelperAtLessThanOneFramePerSec
     flyWithLuaStub:reset()
     local iniContent = {}
     iniContent.simbrief = {}
-    iniContent.simbrief.username = "<<<<USERNAME>>>>>"
+    iniContent.simbrief.username = "<<<USERNAME>>>"
     iniContent.flightplan = {}
+    iniContent.flightplan.deleteDownloadedFlightPlans = "yes"
     iniContent.flightplan.windowVisibility = "visible"
     iniContent.flightplan.flightPlanTypesForDownload1TypeName = "vPilot"
 
@@ -19,6 +20,8 @@ function TestTemporaryBootstrap:testRunVatsimbriefHelperAtLessThanOneFramePerSec
 
     local vatsimbriefHelper = dofile("scripts/vatsimbrief-helper.lua")
     flyWithLuaStub:bootstrapAllMacros()
+
+    os.execute('start "" ' .. SCRIPT_DIRECTORY)
 
     local clock = os.clock
     while true do
