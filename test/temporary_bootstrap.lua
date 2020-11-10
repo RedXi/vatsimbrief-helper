@@ -2,11 +2,19 @@ TestTemporaryBootstrap = {}
 
 LuaIniParserStub = require("LIP")
 
-function TestTemporaryBootstrap:testRunVatsimbriefHelperAtLessThanOneFramePerSecond()
+function TestTemporaryBootstrap:_busyWait(seconds)
+    local t0 = os.clock()
+    while os.clock() - t0 < seconds do
+    end
+end
+
+function TestTemporaryBootstrap:testRunVatsimbriefHelper()
     flyWithLuaStub:reset()
     local iniContent = {}
     iniContent.simbrief = {}
-    iniContent.simbrief.username = "<<<USERNAME>>>"
+    local invalidUsername = "<<<SIMBRIEF USERNAME HERE>>>"
+    iniContent.simbrief.username = invalidUsername
+    luaUnit.assertNotEquals(iniContent.simbrief.username, invalidUsername)
     iniContent.flightplan = {}
     iniContent.flightplan.deleteDownloadedFlightPlans = "yes"
     iniContent.flightplan.windowVisibility = "visible"
@@ -23,12 +31,37 @@ function TestTemporaryBootstrap:testRunVatsimbriefHelperAtLessThanOneFramePerSec
 
     os.execute('start "" ' .. SCRIPT_DIRECTORY)
 
-    local clock = os.clock
+    local lastDoOftenTime = 0
+    local lastDoSometimesTime = 0
+    local lastDoEveryFrameTime = 0
+
+    local const = {
+        DoEveryFrameTimeout = 1.0 / 60.0,
+        DoOftenTimeout = 1,
+        DoSometimesTimeout = 10
+    }
+
     while true do
-        local t0 = clock()
-        while clock() - t0 <= 3 do
+        local now = os.clock()
+
+        if (now - lastDoSometimesTime > const.DoSometimesTimeout) then
+            flyWithLuaStub:runAllDoSometimesFunctions()
+            flyWithLuaStub:readbackAllWritableDatarefs()
+            lastDoSometimesTime = now
         end
 
-        flyWithLuaStub:runNextFrameAfterExternalWritesToDatarefs()
+        if (now - lastDoOftenTime > const.DoOftenTimeout) then
+            flyWithLuaStub:runAllDoOftenFunctions()
+            flyWithLuaStub:readbackAllWritableDatarefs()
+            lastDoOftenTime = now
+        end
+
+        if (now - lastDoEveryFrameTime > const.DoEveryFrameTimeout) then
+            flyWithLuaStub:runAllDoEveryFrameFunctions()
+            flyWithLuaStub:readbackAllWritableDatarefs()
+            flyWithLuaStub:runImguiFrame()
+            self:_busyWait(const.DoEveryFrameTimeout)
+            lastDoEveryFrameTime = now
+        end
     end
 end

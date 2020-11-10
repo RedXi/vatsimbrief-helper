@@ -155,21 +155,25 @@ function flyWithLuaStub:closeWindowByHandle(window)
     window.isOpen = false
 end
 
-function flyWithLuaStub:runNextFrameAfterExternalWritesToDatarefs()
-    for _, f in pairs(self.doSometimesFunctions) do
+function flyWithLuaStub:_callAllFunctionsInTable(functionTable)
+    for _, f in pairs(functionTable) do
         f()
     end
+end
 
-    for _, f in pairs(self.doOftenFunctions) do
-        f()
-    end
+function flyWithLuaStub:runAllDoSometimesFunctions()
+    self:_callAllFunctionsInTable(self.doSometimesFunctions)
+end
 
-    for _, f in pairs(self.doEveryFrameFunctions) do
-        f()
-    end
+function flyWithLuaStub:runAllDoOftenFunctions()
+    self:_callAllFunctionsInTable(self.doOftenFunctions)
+end
 
-    self:readbackAllWritableDatarefs()
+function flyWithLuaStub:runAllDoEveryFrameFunctions()
+    self:_callAllFunctionsInTable(self.doEveryFrameFunctions)
+end
 
+function flyWithLuaStub:runImguiFrame()
     imguiStub:startFrame()
 
     for _, w in pairs(flyWithLuaStub.windows) do
@@ -179,6 +183,16 @@ function flyWithLuaStub:runNextFrameAfterExternalWritesToDatarefs()
     end
 
     imguiStub:endFrame()
+end
+
+function flyWithLuaStub:runNextCompleteFrameAfterExternalWritesToDatarefs()
+    self:runAllDoSometimesFunctions()
+    self:runAllDoOftenFunctions()
+    self:runAllDoEveryFrameFunctions()
+
+    self:readbackAllWritableDatarefs()
+
+    self:runImguiFrame()
 end
 
 function flyWithLuaStub:readbackAllWritableDatarefs()
