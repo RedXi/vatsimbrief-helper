@@ -26,17 +26,20 @@ SOFTWARE.
 local eventBusStub = {}
 
 function eventBusStub.new()
-    local bus = {}
-	
-	bus.on = function (event, handler, index)
+	local bus = {
+		eventsEmittedSoFar = {}
+	}
+
+	bus.on = function(event, handler, index)
 	end
-	
-	bus.off = function (event, handler)
+
+	bus.off = function(event, handler)
 	end
-	
-    bus.emit = function (event, ...)
-    end
-	
+
+	bus.emit = function(event, ...)
+		table.insert(bus.eventsEmittedSoFar, event)
+	end
+
 	return bus
 end
 

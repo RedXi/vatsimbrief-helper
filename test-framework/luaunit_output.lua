@@ -22,7 +22,7 @@ function ColorTextOutput:endTest(node)
         if self.verbosity > luaUnit.VERBOSITY_DEFAULT then
             io.stdout:write("Ok\n")
         else
-            io.stdout:write("[92m.[0m")
+            io.stdout:write("[92m>[0m")
             io.stdout:flush()
         end
     else

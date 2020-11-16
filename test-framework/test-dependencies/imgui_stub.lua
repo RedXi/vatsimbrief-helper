@@ -22,21 +22,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
---]]
-luaUnit = require("luaUnit")
+--]] luaUnit =
+    require("luaUnit")
 
 imgui = {
-    constant = {
-        StyleVar = {
-            ItemSpacing
-        },
-        Col = {
-            Text,
-            Button
-        }
-    },
+    constant = {StyleVar = {ItemSpacing}, Col = {Text, Button}},
     Constants = {
-        ButtonTitleWithIdMatcherPattern = "^(.*)[#][#].*$",
         Button = "Button",
         SmallButton = "SmallButton",
         TextUnformatted = "TextUnformatted",

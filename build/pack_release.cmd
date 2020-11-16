@@ -91,7 +91,7 @@ if !GITHUB_REPO_URL!==!DEFAULT_GITHUB_REPO_URL_WITHOUT_QUOTES! (
     start "" .
 )
 
-:goto label_end
+goto :label_end
 
     :label_prompt_update_build_configuration
     echo Your current build configuration still contains [93mdefault values[0m. To build a proper release,
