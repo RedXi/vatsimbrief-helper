@@ -40,3 +40,11 @@ To build your plugin (and copy it to your locally running X-Plane instance), pre
 
 ### Release Package Generation
 Creating a release package is done via pressing **CTRL+P** and typing `task packReleasePackage` into the little command panel that pops up.
+
+### Observations and Hints
+After spending a few hours with LUA, it appears LUA looks like Turbo Pascal and tries to be JavaScript. It ends up having the disadvantages of both:
+* Not being required to define variables is neither cool nor elegant. Up the test coverage to close to 100% when writing LUA. Nil.
+* Write more inter-module tests than you're used to, because you can easily nil-disconnect two (mentally) coupled components. Coupling is not a bad thing, especially if it is intentional.
+* Everything is global by default (yes, even things defined in anonymous functions inside a function that sits in a table), polluting your namespace. Dependency Hell Yeah!
+
+Nonetheless, it doesn't shoo away both people who developed softare before and those who didn't. That's good. Many platforms use it because it's easy to embed. Also, when using on LuaJIT (like FlyWithLua), copying files in a build takes longer than running a full test suite, a plus.

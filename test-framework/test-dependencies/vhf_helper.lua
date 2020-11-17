@@ -12,6 +12,9 @@ local vhfHelperStub = {
 }
 
 VHFHelperPublicInterface = {
+	getInterfaceVersion = function()
+		return 1
+	end,
 	enterFrequencyProgrammaticallyAsString = function(newFullString)
 		if (isValidFrequency(newFullString)) then
 			vhfHelperStub.frequencies.entered = newFullString

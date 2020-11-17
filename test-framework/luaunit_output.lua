@@ -74,11 +74,18 @@ function ColorTextOutput:endSuite()
     else
         print()
     end
+
     self:displayErroredTests()
     self:displayFailedTests()
     print(luaUnit.LuaUnit.statusLine(self.result))
     if self.result.notSuccessCount == 0 then
         print("OK")
+    end
+
+    if (self.result.successCount == 0 and self.result.errorCount == 0 and self.result.failureCount) then
+        print(
+            "[93mNo tests[0m found in .\\[94mtest\\test_suite.lua[0m (if that's intentional, consider adding at least one require/dofile for your main script)"
+        )
     end
 end
 local LuaUnitOutput = {

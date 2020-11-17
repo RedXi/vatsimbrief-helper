@@ -45,6 +45,7 @@ flyWithLuaStub = {
     doOftenFunctions = {},
     doEveryFrameFunctions = {},
     macros = {},
+    commands = {},
     planeIcao = nil
 }
 
@@ -82,6 +83,7 @@ function flyWithLuaStub:reset()
     self.doOftenFunctions = {}
     self.doEveryFrameFunctions = {}
     self.macros = {}
+    self.command = {}
 end
 
 function flyWithLuaStub:createSharedDatarefHandle(datarefId, datarefType, initialData)
@@ -126,19 +128,27 @@ function flyWithLuaStub:activateAllMacros(activate)
     end
 end
 
+function flyWithLuaStub:_activateMacroByReference(macro, activate)
+    if (activate) then
+        luaUnit.assertIsFalse(macro.isActiveNow)
+        macro.activateFunction()
+    else
+        luaUnit.assertIsTrue(macro.isActiveNow)
+        macro.deactivateFunction()
+    end
+    macro.isActiveNow = activate
+end
+
 function flyWithLuaStub:activateMacro(macroName, activate)
+    local anyMacroActivated = false
     for _, macro in pairs(self.macros) do
         if (macro.name == macroName) then
-            if (activate) then
-                luaUnit.assertIsFalse(macro.isActiveNow)
-                macro.activateFunction()
-            else
-                luaUnit.assertIsTrue(macro.isActiveNow)
-                macro.deactivateFunction()
-            end
-            macro.isActiveNow = activate
+            self:_activateMacroByReference(macro, activate)
+            anyMacroActivated = true
         end
     end
+
+    luaUnit.assertTrue(anyMacroActivated)
 end
 
 function flyWithLuaStub:isMacroActive(macroName)
@@ -151,11 +161,28 @@ function flyWithLuaStub:isMacroActive(macroName)
     return false
 end
 
-function flyWithLuaStub:closeWindowByHandle(window)
-    luaUnit.assertTrue(window.isOpen)
+function flyWithLuaStub:closeWindowByReference(window)
+    luaUnit.assertTrue(window.isVisible)
     luaUnit.assertFalse(window.wasDestroyed)
     window.closeFunction()
-    window.isOpen = false
+    window.isVisible = false
+end
+
+function flyWithLuaStub:getWindowByTitle(windowTitle)
+    for _, window in pairs(self.windows) do
+        if (window.title == nil) then
+            logMsg(
+                ("Warning: Titleless window imgui builder=%s onclose=%s found."):format(
+                    window.imguiBuilderFunctionName or "NIL",
+                    window.closeFunctionName or "NIL"
+                )
+            )
+        elseif (window.title == windowTitle) then
+            return window
+        end
+    end
+
+    return nil
 end
 
 function flyWithLuaStub:_callAllFunctionsInTable(functionTable)
@@ -180,7 +207,7 @@ function flyWithLuaStub:runImguiFrame()
     imguiStub:startFrame()
 
     for _, w in pairs(flyWithLuaStub.windows) do
-        if (not w.wasDestroyed and w.isOpen) then
+        if (not w.wasDestroyed and w.isVisible) then
             w.imguiBuilderFunction()
         end
     end
@@ -188,7 +215,17 @@ function flyWithLuaStub:runImguiFrame()
     imguiStub:endFrame()
 end
 
+function flyWithLuaStub:cleanupBeforeRunningNextFrame()
+    for key, window in pairs(self.windows) do
+        if (window.wasDestroyed) then
+            table.remove(self.windows, key)
+        end
+    end
+end
+
 function flyWithLuaStub:runNextCompleteFrameAfterExternalWritesToDatarefs()
+    self:cleanupBeforeRunningNextFrame()
+
     self:writeAllDatarefValuesToLocalVariables()
 
     self:runAllDoSometimesFunctions()
@@ -233,15 +270,8 @@ function flyWithLuaStub:closeWindowByTitle(windowTitle)
     local wasAnyWindowClosed = false
 
     for _, window in pairs(self.windows) do
-        if (window.title == nil) then
-            logMsg(
-                ("Warning: Titleless window imgui builder=%s onclose=%s found."):format(
-                    window.imguiBuilderFunctionName or "NIL",
-                    window.closeFunctionName or "NIL"
-                )
-            )
-        elseif (window.title == windowTitle) then
-            self:closeWindowByHandle(window)
+        if (window.title == windowTitle) then
+            self:closeWindowByReference(window)
             wasAnyWindowClosed = true
         end
     end
@@ -249,7 +279,22 @@ function flyWithLuaStub:closeWindowByTitle(windowTitle)
     luaUnit.assertIsTrue(wasAnyWindowClosed)
 end
 
-function create_command(commandName, readableCommandName, toggleExpressionName, something1, something2)
+function flyWithLuaStub:isWindowOpen(windowReference)
+    return windowReference.isVisible
+end
+
+function flyWithLuaStub:executeCommand(commandName)
+    luaUnit.assertNotNil(commandName)
+    local c = self.commands[commandName]
+    luaUnit.assertNotNil(c)
+    c.commandFunction()
+end
+
+function create_command(commandName, readableCommandName, commandExpressionString, something1, something2)
+    flyWithLuaStub.commands[commandName] = {
+        readableName = readableCommandName,
+        commandFunction = loadstring(commandExpressionString)
+    }
 end
 
 function add_macro(macroName, activateExpression, deactivateExpression, activateOrDeactivate)
@@ -346,7 +391,7 @@ end
 function float_wnd_create(width, height, something, whatever)
     local newWindow = {
         wasDestroyed = false,
-        isOpen = true
+        isVisible = true
     }
     table.insert(flyWithLuaStub.windows, newWindow)
     return newWindow
@@ -366,9 +411,35 @@ function float_wnd_set_imgui_builder(window, newImguiBuilderFunctionName)
     window.imguiBuilderFunctionName = newImguiBuilderFunctionName
 end
 
+-- This function does not show windows in FlyWithLua when called like this: float_wnd_set_visible(window, 1), but it should.
+function float_wnd_set_visible(window, intValue)
+    luaUnit.assertEquals(intValue, 0) -- Only hiding works in FlyWithLua
+    luaUnit.assertNotNil(window)
+    luaUnit.assertTrue(intValue == 0 or intValue == 1)
+    local boolValue = nil
+    if (intValue == 0) then
+        boolValue = false
+    else
+        boolValue = true
+    end
+
+    window.isVisible = boolValue
+end
+
+-- This function is not available in FlyWithLua, but it should.
+-- function float_wnd_get_visible(window)
+--     luaUnit.assertNotNil(window)
+
+--     if (window.isVisible) then
+--         return 1
+--     else
+--         return 0
+--     end
+-- end
+
 function float_wnd_destroy(window)
     window.wasDestroyed = true
-    window.isOpen = false
+    window.isVisible = false
 end
 
 return flyWithLuaStub

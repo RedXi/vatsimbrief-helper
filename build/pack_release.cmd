@@ -68,7 +68,7 @@ if %TAG%==TAGLESS (
     goto :label_end
 ) else (
     echo.
-    echo Don't forget to push the release tag to make Github see it in the 'Draft Release' page.
+    echo Don't forget to push the release tag to make Github recognize it in the 'Draft Release' page.
 )
 
 set OPEN_RELEASE_PAGES_TIMEOUT=5
