@@ -1,6 +1,6 @@
 # A320 NORMAL CHECKLIST Developer Notes
 
-Link to the up-do-date version of this document: [DEVELOPMENT_ENVIRONMENT.md](https://github.com/VerticalLongboard/xplane-a320-checklist/blob/main/DEVELOPMENT_ENVIRONMENT.md)
+Link to the up-to-date version of this document: [DEVELOPMENT_ENVIRONMENT.md](https://github.com/VerticalLongboard/xplane-a320-checklist/blob/main/DEVELOPMENT_ENVIRONMENT.md)
 
 ## Development Environment
 If you happen to develop FlyWithLua plugins and are crossing the threshold from "coding a bit and pressing buttons to see if my plugin works" to "I don't like LUA too much, but it's doing its job and I like to code a bit more", feel free to use and adapt the VS Code / LuaUnit environment boilerplate from A320 NORMAL CHECKLIST.
@@ -11,6 +11,8 @@ Perks:
 * Pressing **Build** runs all tests, copies the script and dependencies to X-Plane and triggers a running X-Plane instance to reload all scripts
 * Building a **release package** is only one button away (ZIP + Installer)
 * Takes about 15 minutes (including downloads) to set up
+
+![FlyWithLua Boilerplate Screenshot](DEVELOPMENT_ENVIRONMENT.png "FlyWithLua Boilerplate Screenshot")
 
 ### Setup
 Required (Coding + Testing):
@@ -41,10 +43,10 @@ To build your plugin (and copy it to your locally running X-Plane instance), pre
 ### Release Package Generation
 Creating a release package is done via pressing **CTRL+P** and typing `task packReleasePackage` into the little command panel that pops up.
 
-### Observations and Hints
+## Observations and Hints
 After spending a few hours with LUA, it appears LUA looks like Turbo Pascal and tries to be JavaScript. It ends up having the disadvantages of both:
 * Not being required to define variables is neither cool nor elegant. Up the test coverage to close to 100% when writing LUA. Nil.
 * Write more inter-module tests than you're used to, because you can easily nil-disconnect two (mentally) coupled components. Coupling is not a bad thing, especially if it is intentional.
 * Everything is global by default (yes, even things defined in anonymous functions inside a function that sits in a table), polluting your namespace. Dependency Hell Yeah!
 
-Nonetheless, it doesn't shoo away both people who developed softare before and those who didn't. That's good. Many platforms use it because it's easy to embed. Also, when using on LuaJIT (like FlyWithLua), copying files in a build takes longer than running a full test suite, a plus.
+Nonetheless, it doesn't shoo away both people who developed softare before and those who didn't. That's good. Many platforms use it because it's easy to embed. Also, when running it on LuaJIT (like FlyWithLua), copying files in a build takes longer than running a full test suite plus the script itself, cutting iteration times to almost zero.
