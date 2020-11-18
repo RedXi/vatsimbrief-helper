@@ -36,6 +36,7 @@ mkdir %RELEASE_PACKAGE_FOLDER_PATH%\Modules
 mkdir %RELEASE_PACKAGE_FOLDER_PATH%\Scripts
 
 xcopy /Y /S /E scripts\* %RELEASE_PACKAGE_FOLDER_PATH%\Scripts\*
+xcopy /Y /S /E script_modules\* %RELEASE_PACKAGE_FOLDER_PATH%\Modules\*
 xcopy /Y /S /E modules\* %RELEASE_PACKAGE_FOLDER_PATH%\Modules\*
 
 cd %RELEASE_PACKAGE_FOLDER_PATH%

@@ -18,11 +18,18 @@ Section "$%READABLE_SCRIPT_NAME% (required)"
 	SectionIn RO
 	SetOutPath $INSTDIR\Resources\plugins\FlyWithLua\Scripts
 	
-	File ..\scripts\*.*
+	File /r ..\scripts\*
+SectionEnd
+
+Section "$%READABLE_SCRIPT_NAME% Components (required)"
+	SectionIn RO
+	SetOutPath $INSTDIR\Resources\plugins\FlyWithLua\Modules
+	
+	File /r ..\script_modules\*
 SectionEnd
 
 Section "Dependencies"
 	SetOutPath $INSTDIR\Resources\plugins\FlyWithLua\Modules
 	
-	File ..\modules\*.*
+	File ..\modules\*
 SectionEnd

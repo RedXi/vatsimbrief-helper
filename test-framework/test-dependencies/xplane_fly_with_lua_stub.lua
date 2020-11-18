@@ -191,6 +191,17 @@ function flyWithLuaStub:_callAllFunctionsInTable(functionTable)
     end
 end
 
+function flyWithLuaStub:debugPrintAllDatarefs()
+    logMsg("All datarefs:")
+    local numDatarefs = 0
+    for datarefId, d in pairs(self.datarefs) do
+        logMsg(("Dataref id=%s value=%s"):format(datarefId, tostring(d)))
+        numDatarefs = numDatarefs + 1
+    end
+
+    logMsg(("Datarefs count=%d"):format(numDatarefs))
+end
+
 function flyWithLuaStub:runAllDoSometimesFunctions()
     self:_callAllFunctionsInTable(self.doSometimesFunctions)
 end

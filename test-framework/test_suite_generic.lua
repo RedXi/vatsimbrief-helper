@@ -8,4 +8,5 @@ require("test_suite")
 
 local runner = luaUnit.LuaUnit.new()
 runner:setOutput(luaUnitOutput.ColorText)
+-- runner:setOutputType("TAP", nil)
 os.exit(runner:runSuite())
