@@ -7,6 +7,6 @@ local imguiStub = require("imgui_stub")
 require("test_suite")
 
 local runner = luaUnit.LuaUnit.new()
-runner:setOutput(luaUnitOutput.ColorText)
--- runner:setOutputType("TAP", nil)
+-- runner:setOutput(luaUnitOutput.ColorText)
+runner:setOutput(luaUnitOutput.ColorTap)
 os.exit(runner:runSuite())

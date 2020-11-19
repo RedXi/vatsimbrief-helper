@@ -88,8 +88,57 @@ function ColorTextOutput:endSuite()
         )
     end
 end
+
+local ColorTapOutput = luaUnit.genericOutput.new() -- derived class
+local TapOutput_MT = {__index = ColorTapOutput} -- metatable
+ColorTapOutput.__class__ = "ColorTapOutput"
+
+-- For a good reference for TAP format, check: http://testanything.org/tap-specification.html
+
+function ColorTapOutput.new(runner)
+    local t = luaUnit.genericOutput.new(runner, luaUnit.VERBOSITY_LOW)
+    return setmetatable(t, TapOutput_MT)
+end
+function ColorTapOutput:startSuite()
+    print("1.." .. self.result.selectedCount)
+    print("# Started on " .. self.result.startDate)
+end
+function ColorTapOutput:startClass(className)
+    if className ~= "[TestFunctions]" then
+        print("[4m# Starting class: " .. className .. "[0m")
+    end
+end
+
+function ColorTapOutput:updateStatus(node)
+    if node:isSkipped() then
+        io.stdout:write("[92mok[0m ", self.result.currentTestNumber, "\t# SKIP ", node.msg, "\n")
+        return
+    end
+
+    io.stdout:write(" [91mnot ok[0m ", self.result.currentTestNumber, "\t[93m", node.testName, "[0m\n")
+    if self.verbosity > luaUnit.VERBOSITY_LOW then
+        print("[91m" .. luaUnit.private.prefixString("#   ", node.msg) .. "[0m")
+        print("[94m" .. luaUnit.private.prefixString("#   ", node.stackTrace) .. "[0m")
+    end
+    if (node:isFailure() or node:isError()) and self.verbosity > luaUnit.VERBOSITY_DEFAULT then
+        print(luaUnit.private.prefixString("#   ", node.stackTrace))
+    end
+end
+
+function ColorTapOutput:endTest(node)
+    if node:isSuccess() then
+        io.stdout:write("[92m ok[0m     ", self.result.currentTestNumber, "\t", node.testName, "\n")
+    end
+end
+
+function ColorTapOutput:endSuite()
+    print("# " .. luaUnit.LuaUnit.statusLine(self.result))
+    return self.result.notSuccessCount
+end
+
 local LuaUnitOutput = {
-    ColorText = ColorTextOutput
+    ColorText = ColorTextOutput,
+    ColorTap = ColorTapOutput
 }
 
 return LuaUnitOutput

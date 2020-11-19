@@ -6,7 +6,7 @@
         {
             "label": "packReleasePackage",
             "dependsOn": [
-                "buildAndReloadFlyWithLua"
+                "localBValidationuildAndReloadFlyWithLua"
             ],
             "type": "process",
             "command": "No non-windows command available.",
@@ -25,7 +25,7 @@
             "problemMatcher": []
         },
         {
-            "label": "buildAndReloadFlyWithLua",
+            "label": "localBuildAndReloadFlyWithLua",
             "dependsOn": [
                 "copyToXPlane"
             ],

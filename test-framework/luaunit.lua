@@ -2308,7 +2308,7 @@ end
 For each test: . or F or E
 
 If some failed tests:
-    ==============
+    ==============prefixString
     ERROR / FAILURE: TestName (testfile.testclass)
     ---------
     Stack trace

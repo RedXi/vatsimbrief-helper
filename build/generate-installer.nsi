@@ -25,7 +25,7 @@ Section "$%READABLE_SCRIPT_NAME% Components (required)"
 	SectionIn RO
 	SetOutPath $INSTDIR\Resources\plugins\FlyWithLua\Modules
 	
-	File /r ..\script_modules\*
+	File /nonfatal /r ..\script_modules\*
 SectionEnd
 
 Section "Dependencies"

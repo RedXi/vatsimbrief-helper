@@ -63,7 +63,7 @@ function logMsg(stringToLog)
         end
     end
 
-    print("TEST LOG: " .. stringToLog)
+    print("[7m" .. stringToLog .. "[0m")
 end
 
 function flyWithLuaStub:suppressLogMessagesBeginningWith(stringBeginning)
