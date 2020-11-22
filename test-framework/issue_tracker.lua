@@ -22,8 +22,12 @@ do
 
     function IssueTracker:printSummary()
         self:_relinkAllLinkedIssues()
-        self:_printIssuesWithoutWorkarounds()
+        self:_printIssues(false)
         self:_printKnownIssues()
+    end
+
+    function IssueTracker:printAllIssues()
+        self:_printIssues(true)
     end
 
     function IssueTracker:_post(newComponent, newDescription, newWorkaround)
@@ -110,13 +114,17 @@ do
         atLeastOneOccurrence.workaround = knownIssueString
     end
 
+    function IssueTracker:_TRACK_INTERNAL_ISSUE(newComponent, newDescription, newWorkaround)
+        self:trackIssue(newComponent, newDescription, newWorkaround)
+    end
+
     function IssueTracker:_printKnownIssues()
-        self:trackIssue(
+        self:_TRACK_INTERNAL_ISSUE(
             "Lua",
             "Lua does not support continue statements",
             "Use deeply nested ifs or labels in a future Lua update/Lua version instead."
         )
-        self:trackIssue("Lua", "Lua does not support labels", "Stick to ifs until next Lua update")
+        self:_TRACK_INTERNAL_ISSUE("Lua", "Lua does not support labels", "Stick to ifs until next Lua update")
 
         local headerToPrint = "[96m[4mIssue Tracker: All linked known issues:[0m"
         for componentName, component in pairs(self.components) do
@@ -146,7 +154,7 @@ do
     end
 
     function IssueTracker:_findBestDecriptionForIssue(issueDescription, issue)
-        self:trackIssue(
+        self:_TRACK_INTERNAL_ISSUE(
             "IssueTracker",
             "The longest description is not necessarily the best one.",
             "Let's see how people use IssueTracker for now."
@@ -169,11 +177,20 @@ do
         return prefix .. linesString:gsub("\n", "\n" .. prefix)
     end
 
-    function IssueTracker:_printIssuesWithoutWorkarounds()
-        self:trackIssue("Lua", "continue statements", "nested ifs")
-        self:trackIssue("Lua", "labels", "nested ifs")
+    function IssueTracker:_printIssues(printAll)
+        self:_TRACK_INTERNAL_ISSUE("Lua", "continue statements", "nested ifs")
+        self:_TRACK_INTERNAL_ISSUE("Lua", "labels", "nested ifs")
 
-        self:_log("\n" .. "[96m[4mIssue Tracker: All manually highlighted issues in code:[0m")
+        if (printAll) then
+            self:_log(
+                "\n" .. "[96m[4mIssue Tracker: All manually highlighted issues in code that ran during tests:[0m"
+            )
+        else
+            self:_log(
+                "\n" ..
+                    "[96m[4mIssue Tracker: All manually highlighted issues in code that ran during tests without a workaround:[0m"
+            )
+        end
         local num = 0
         local numUnique = 0
         local numWorkedAround = 0
@@ -191,18 +208,18 @@ do
                     num = num + issue.numOccurrences
                     local notWorkedAroundCompletely = self:_wasNotWorkedAroundCompletely(issue)
 
-                    if (notWorkedAroundCompletely) then
+                    if (notWorkedAroundCompletely or printAll) then
                         for occurrenceLocation, occurrence in pairs(issue.occurrences) do
-                            if (occurrence.workaround == nil) then
-                                if (componentToPrint ~= nil) then
-                                    self:_log(componentToPrint)
-                                    componentToPrint = nil
-                                end
-                                if (issueToPrint ~= nil) then
-                                    self:_log(issueToPrint)
-                                    issueToPrint = nil
-                                end
+                            if (componentToPrint ~= nil) then
+                                self:_log(componentToPrint)
+                                componentToPrint = nil
+                            end
+                            if (issueToPrint ~= nil) then
+                                self:_log(issueToPrint)
+                                issueToPrint = nil
+                            end
 
+                            if (occurrence.workaround == nil) then
                                 self:_log((" [94m%s[0m: [93mNo Workaround[0m"):format(occurrenceLocation))
                             else
                                 self:_log(
@@ -221,7 +238,7 @@ do
         end
         if (num == 0) then
             self:_log(
-                ("\nFound %d total issues. That means everything is fine or nobody cares.\n"):format(
+                ("\nFound %d total issues. That means everything is fine or nobody cares. Use TRACK_ISSUE() to leave hints in code.\n"):format(
                     num,
                     numUnique,
                     numWorkedAround
@@ -229,7 +246,8 @@ do
             )
         else
             self:_log(
-                ("\nFound %d unique (%d total collected) issues, %d withhout a workaround.\n"):format(
+                ("\nFound %d unique (%d total collected) issues in code that ran during tests, %d withhout a workaround.\n" ..
+                    "If you like to see all issues, run the task 'triggerAllIssues'\n"):format(
                     numUnique,
                     num,
                     numUnique - numWorkedAround

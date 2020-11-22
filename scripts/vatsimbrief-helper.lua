@@ -885,9 +885,10 @@ function downloadFlightplan(typeName, now, forceAnotherDownload)
                 "We observed that the official URL redirects from www.simbrief.com/ofp/flightplans/<TypeName>",
                 "to",
                 "http://www.simbrief.com/system/briefing.fmsdl.php?formatget=flightplans/<TypeName>",
-                "HTTP 301 Redirects are unfortunately not working with this library. :-("
-              ),
-              "Keep the final URL in hardcoded for now. Ouch."
+                "HTTP 301 Redirects are unfortunately not working with this library. :-(",
+                "Temporary Workaround: Keep the final URL in hardcoded for now. Ouch.",
+                "That's a ticking time bomb."
+              )
             )
             --logMsg("File type of download: " .. FlightPlanDownload.FileTypesAndNames[typeName])
             if getExtensionOfFileName(FlightPlanDownload.FileTypesAndNames[typeName]) ~= ".pdf" then
@@ -2003,8 +2004,8 @@ do
         if (not continue) then
           TRACK_ISSUE(
             "Imgui",
-            "The ImGUI LUA binding does not include GetStyle",
-            "Define screen-picked colors manually"
+            "The ImGUI LUA binding in FlyWithLua does not include GetStyle.",
+            "Define screen-picked colors manually."
           )
           local colorDefaultImguiBackground = 0xFF121110
 

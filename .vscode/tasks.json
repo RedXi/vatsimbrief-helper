@@ -98,6 +98,38 @@
             "problemMatcher": []
         },
         {
+            "label": "triggerAllIssues",
+            "type": "process",
+            "command": "No non-windows command available.",
+            "windows": {
+                "command": ".\\build\\run_script_in_folder_with_test_lua_paths.cmd"
+            },
+            "args": [
+                {
+                    "quoting": "escape",
+                    "value": "."
+                },
+                {
+                    "quoting": "escape",
+                    "value": "test-framework\\test_suite_generic.lua"
+                },
+                {
+                    "quoting": "escape",
+                    "value": "ISSUE_TRACKER_TRIGGER_ALL_ISSUES"
+                },
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
             "label": "extractBoilerplate",
             "type": "process",
             "command": "No non-windows command available.",
