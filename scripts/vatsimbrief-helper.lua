@@ -33,6 +33,9 @@ local emptyString = ""
 TRACK_ISSUE = TRACK_ISSUE or function(component, description, workaround)
   end
 
+MULTILINE_TEXT = MULTILINE_TEXT or function(...)
+  end
+
 local function stringIsEmpty(s)
   return s == nil or s == emptyString
 end
