@@ -605,7 +605,8 @@ local function performDefaultHttpGetRequest(url, resultCallback, errorCallback, 
         "We tried to enable the library for HTTP redirects this way. However, we don't get out of http.request() w/o error:",
         "Request URL: http://www.simbrief.com/ofp/flightplans/EDDNEDDL_WAE_1601924120.rte,",
         "FAILURE: Status = nil, code = host or service not provided, or not known"
-      ) "Treat everything below 500 as an error for now."
+      ),
+      "Treat everything below 500 as an error for now."
     )
     --[[ 
       
@@ -882,7 +883,8 @@ function downloadFlightplan(typeName, now, forceAnotherDownload)
                 "to",
                 "http://www.simbrief.com/system/briefing.fmsdl.php?formatget=flightplans/<TypeName>",
                 "HTTP 301 Redirects are unfortunately not working with this library. :-("
-              ) "Keep the final URL in hardcoded for now. Ouch."
+              ),
+              "Keep the final URL in hardcoded for now. Ouch."
             )
             --logMsg("File type of download: " .. FlightPlanDownload.FileTypesAndNames[typeName])
             if getExtensionOfFileName(FlightPlanDownload.FileTypesAndNames[typeName]) ~= ".pdf" then
