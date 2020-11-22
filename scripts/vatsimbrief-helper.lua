@@ -30,6 +30,9 @@ SOFTWARE.
 --]]
 local emptyString = ""
 
+TRACK_ISSUE = TRACK_ISSUE or function(component, description, workaround)
+  end
+
 local function stringIsEmpty(s)
   return s == nil or s == emptyString
 end
@@ -596,8 +599,15 @@ local function performDefaultHttpGetRequest(url, resultCallback, errorCallback, 
     )
     --
 
-    --[[ We tried to enable the library for HTTP redirects this way. However, we don't get out of http.request() w/o error:
-      Request URL: http://www.simbrief.com/ofp/flightplans/EDDNEDDL_WAE_1601924120.rte, FAILURE: Status = nil, code = host or service not provided, or not known
+    TRACK_ISSUE(
+      "Tech Debt",
+      MULTILINE_TEXT(
+        "We tried to enable the library for HTTP redirects this way. However, we don't get out of http.request() w/o error:",
+        "Request URL: http://www.simbrief.com/ofp/flightplans/EDDNEDDL_WAE_1601924120.rte,",
+        "FAILURE: Status = nil, code = host or service not provided, or not known"
+      ) "Treat everything below 500 as an error for now."
+    )
+    --[[ 
       
     if status == 301 then -- Moved permanently
       local to = headers.location
@@ -742,8 +752,11 @@ local function deleteDownloadedFlightPlansIfConfigured()
     else
       logMsg("Attempting to delete " .. #fileNames .. " recent flight plan files")
 
-      -- The listDirectory() implementation is very sloppy. In case it fails, disable
-      -- the flight plan removal such that we don't crash again next time we're launched.
+      TRACK_ISSUE(
+        "Tech Debt",
+        "The listDirectory() implementation is very sloppy.",
+        "In case it fails, disable the flight plan removal such that we don't crash again next time we're launched."
+      )
       setConfiguredDeleteOldFlightPlansSetting(false)
       saveConfiguration()
 
@@ -861,12 +874,16 @@ function downloadFlightplan(typeName, now, forceAnotherDownload)
                 FlightPlanDownload.FilesForFlightplanId
               )
             )
-            -- We observed that the official URL redirects
-            --  from www.simbrief.com/ofp/flightplans/<TypeName>
-            -- to
-            --  http://www.simbrief.com/system/briefing.fmsdl.php?formatget=flightplans/<TypeName>
-            -- HTTP 301 Redirects are unfortunately not working with this library. :-(
-            -- Keep the final URL in hardcoded for now. Ouch.
+
+            TRACK_ISSUE(
+              "Tech Debt",
+              MULTILINE_TEXT(
+                "We observed that the official URL redirects from www.simbrief.com/ofp/flightplans/<TypeName>",
+                "to",
+                "http://www.simbrief.com/system/briefing.fmsdl.php?formatget=flightplans/<TypeName>",
+                "HTTP 301 Redirects are unfortunately not working with this library. :-("
+              ) "Keep the final URL in hardcoded for now. Ouch."
+            )
             --logMsg("File type of download: " .. FlightPlanDownload.FileTypesAndNames[typeName])
             if getExtensionOfFileName(FlightPlanDownload.FileTypesAndNames[typeName]) ~= ".pdf" then
               url =
@@ -1939,7 +1956,9 @@ do
       end
     )
 
-    -- For some odd reason, LUA does _not_ have a 'continue' statement
+    TRACK_ISSUE("Lua", "continue statement", "nested ifs")
+    TRACK_ISSUE("Lua", "labels", "nested ifs")
+
     local continue = nil
     local textIndex = 1
     while (textIndex <= #fullAtcString) do
@@ -1977,7 +1996,11 @@ do
         end
 
         if (not continue) then
-          -- The ImGUI LUA binding does _not_ include GetStyle
+          TRACK_ISSUE(
+            "Imgui",
+            "The ImGUI LUA binding does not include GetStyle",
+            "Define screen-picked colors manually"
+          )
           local colorDefaultImguiBackground = 0xFF121110
 
           local colorA320COMOrange = 0xFF00AAFF

@@ -27,7 +27,21 @@ local luaUnit = require("luaunit")
 local imguiStub = require("imgui_stub")
 
 SCRIPT_DIRECTORY = os.getenv("TEMP_TEST_SCRIPT_FOLDER") .. "\\"
-local invalidPlaneIcao = "...."
+
+local function resetPlatformGlobals()
+    local invalidPlaneIcao = "...."
+    local invalidXplaneVersion = "0"
+    local invalidAircraftPath = "."
+    local invalidAircraftFilename = ""
+
+    PLANE_ICAO = invalidPlaneIcao
+    XPLANE_VERSION = invalidXplaneVersion
+    AIRCRAFT_PATH = invalidAircraftPath
+    AIRCRAFT_FILENAME = invalidAircraftFilename
+end
+
+resetPlatformGlobals()
+
 PLANE_ICAO = invalidPlaneIcao
 
 flyWithLuaStub = {
@@ -45,8 +59,7 @@ flyWithLuaStub = {
     doOftenFunctions = {},
     doEveryFrameFunctions = {},
     macros = {},
-    commands = {},
-    planeIcao = nil
+    commands = {}
 }
 
 function logMsg(stringToLog)
@@ -55,15 +68,31 @@ function logMsg(stringToLog)
     end
 
     if (stringToLog ~= nil) then
-        if
-            (flyWithLuaStub.suppressLogMessageString ~= nil and
-                stringToLog:sub(1, #flyWithLuaStub.suppressLogMessageString) == flyWithLuaStub.suppressLogMessageString)
-         then
-            return
+        if (flyWithLuaStub.suppressLogMessageString ~= nil) then
+            if (stringToLog:sub(1, #flyWithLuaStub.suppressLogMessageString) == flyWithLuaStub.suppressLogMessageString) then
+                return
+            end
+        end
+
+        if (flyWithLuaStub.suppressLogMessageStrings ~= nil) then
+            for str, _ in pairs(flyWithLuaStub.suppressLogMessageStrings) do
+                if (stringToLog:find(str) ~= nil) then
+                    return
+                end
+            end
         end
     end
 
     print("[7m" .. stringToLog .. "[0m")
+end
+
+function flyWithLuaStub:suppressLogMessagesContaining(listOfStrings)
+    if (flyWithLuaStub.suppressLogMessageStrings == nil) then
+        flyWithLuaStub.suppressLogMessageStrings = {}
+    end
+    for _, str in pairs(listOfStrings) do
+        flyWithLuaStub.suppressLogMessageStrings[str] = {}
+    end
 end
 
 function flyWithLuaStub:suppressLogMessagesBeginningWith(stringBeginning)
@@ -76,7 +105,7 @@ function flyWithLuaStub:setPlaneIcao(value)
 end
 
 function flyWithLuaStub:reset()
-    self:setPlaneIcao(invalidPlaneIcao)
+    resetPlatformGlobals()
     self.datarefs = {}
     self.windows = {}
     self.doSometimesFunctions = {}
@@ -169,6 +198,7 @@ function flyWithLuaStub:closeWindowByReference(window)
 end
 
 function flyWithLuaStub:getWindowByTitle(windowTitle)
+    luaUnit.assertNotNil(windowTitle)
     for _, window in pairs(self.windows) do
         if (window.title == nil) then
             logMsg(
@@ -200,6 +230,24 @@ function flyWithLuaStub:debugPrintAllDatarefs()
     end
 
     logMsg(("Datarefs count=%d"):format(numDatarefs))
+end
+
+function flyWithLuaStub:debugPrintAllWindows()
+    logMsg("All windows:")
+    local numWindows = 0
+    for windowTitle, w in pairs(self.windows) do
+        logMsg(
+            ("Window title=%s visible=%s destroyed=%s render=%s"):format(
+                tostring(w.title),
+                tostring(w.isVisible),
+                tostring(w.wasDestroyed),
+                tostring(w.imguiBuilderFunctionName)
+            )
+        )
+        numWindows = numWindows + 1
+    end
+
+    logMsg(("Windows count=%d"):format(numWindows))
 end
 
 function flyWithLuaStub:runAllDoSometimesFunctions()
@@ -387,6 +435,15 @@ function XPLMFindDataRef(datarefName)
     return datarefName
 end
 
+function float_wnd_create(width, height, something, whatever)
+    local newWindow = {
+        wasDestroyed = false,
+        isVisible = true
+    }
+    table.insert(flyWithLuaStub.windows, newWindow)
+    return newWindow
+end
+
 function XPLMSetDatai(datarefName, newDataAsInteger)
     luaUnit.assertNotNil(datarefName)
     luaUnit.assertNotNil(newDataAsInteger)
@@ -399,13 +456,14 @@ function XPLMSetDatai(datarefName, newDataAsInteger)
     luaUnit.assertTrue(d.isInternallyDefinedDataref)
 end
 
-function float_wnd_create(width, height, something, whatever)
-    local newWindow = {
-        wasDestroyed = false,
-        isVisible = true
-    }
-    table.insert(flyWithLuaStub.windows, newWindow)
-    return newWindow
+function XPLMSpeakString(string)
+    luaUnit.assertNotNil(string)
+    logMsg(("Speaking string=%s"):format(string))
+    flyWithLuaStub.lastSpeakString = string
+end
+
+function flyWithLuaStub:getLastSpeakString()
+    return self.lastSpeakString
 end
 
 function float_wnd_set_title(window, newTitle)
