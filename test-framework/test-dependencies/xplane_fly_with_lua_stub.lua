@@ -31,18 +31,16 @@ SCRIPT_DIRECTORY = os.getenv("TEMP_TEST_SCRIPT_FOLDER") .. "\\"
 local function resetPlatformGlobals()
     local invalidPlaneIcao = "...."
     local invalidXplaneVersion = "0"
-    local invalidAircraftPath = "."
+    local defaultAircraftPath = SCRIPT_DIRECTORY
     local invalidAircraftFilename = ""
 
     PLANE_ICAO = invalidPlaneIcao
     XPLANE_VERSION = invalidXplaneVersion
-    AIRCRAFT_PATH = invalidAircraftPath
+    AIRCRAFT_PATH = defaultAircraftPath
     AIRCRAFT_FILENAME = invalidAircraftFilename
 end
 
 resetPlatformGlobals()
-
-PLANE_ICAO = invalidPlaneIcao
 
 flyWithLuaStub = {
     Constants = {
@@ -290,10 +288,9 @@ function flyWithLuaStub:runNextCompleteFrameAfterExternalWritesToDatarefs()
     self:runAllDoSometimesFunctions()
     self:runAllDoOftenFunctions()
     self:runAllDoEveryFrameFunctions()
+    self:runImguiFrame()
 
     self:readbackAllWritableDatarefs()
-
-    self:runImguiFrame()
 end
 
 function flyWithLuaStub:readbackAllWritableDatarefs()
@@ -319,6 +316,7 @@ function flyWithLuaStub:writeDatarefValueToLocalVariables(globalDatarefIdName)
         if (d.data ~= nil) then
             actualNewData = tostring(d.data)
         end
+
         localVariable.writeFunction = loadstring(localVariableName .. " = " .. actualNewData)
         luaUnit.assertNotNil(localVariable.writeFunction)
         localVariable.writeFunction()
@@ -480,7 +478,11 @@ function float_wnd_set_imgui_builder(window, newImguiBuilderFunctionName)
     window.imguiBuilderFunctionName = newImguiBuilderFunctionName
 end
 
--- This function does not show windows in FlyWithLua when called like this: float_wnd_set_visible(window, 1), but it should.
+TRACK_ISSUE(
+    "FlyWithLua",
+    "float_wnd_set_visible does not show windows in FlyWithLua when called like this: float_wnd_set_visible(window, 1), but it should.",
+    "Do not call this function for now and block using it for anything besides hiding."
+)
 function float_wnd_set_visible(window, intValue)
     luaUnit.assertEquals(intValue, 0) -- Only hiding works in FlyWithLua
     luaUnit.assertNotNil(window)
@@ -495,6 +497,11 @@ function float_wnd_set_visible(window, intValue)
     window.isVisible = boolValue
 end
 
+TRACK_ISSUE(
+    "FlyWithLua",
+    "float_wnd_get_visible is not available in FlyWithLua.",
+    "Do not offer it, but leave a comment at least."
+)
 -- This function is not available in FlyWithLua, but it should.
 -- function float_wnd_get_visible(window)
 --     luaUnit.assertNotNil(window)

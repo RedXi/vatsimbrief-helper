@@ -6,6 +6,7 @@ do
         local newInstanceWithState = {components = {}}
         setmetatable(newInstanceWithState, self)
         self.__index = self
+
         return newInstanceWithState
     end
 
@@ -21,6 +22,18 @@ do
     end
 
     function IssueTracker:printSummary()
+        self:_TRACK_INTERNAL_ISSUE(
+            "Lua",
+            "Lua does not support continue statements",
+            "Use deeply nested ifs or labels in a future Lua update/Lua version instead."
+        )
+        self:_TRACK_INTERNAL_ISSUE("Lua", "Lua does not support labels", "Stick to ifs until next Lua update")
+        self:_TRACK_INTERNAL_ISSUE(
+            "IssueTracker",
+            "The longest description is not necessarily the best one.",
+            "Let's see how people use IssueTracker for now."
+        )
+
         self:_relinkAllLinkedIssues()
         self:_printIssues(false)
         self:_printKnownIssues()
@@ -64,11 +77,13 @@ do
 
     function IssueTracker:_relinkKnownLinkedIssue(issueToRelink)
         assert(issueToRelink.isLinked)
+        issueToRelink.numRelatedTo = 0
         for componentName, component in pairs(self.components) do
             for issueDescription, issue in pairs(component.issues) do
                 if (not issue.isLinked) then
                     for key, blameString in pairs(issueToRelink.blameStringList) do
                         if (issueDescription:find(blameString) ~= nil) then
+                            issueToRelink.numRelatedTo = issueToRelink.numRelatedTo + 1
                             issueToRelink.blamedComponents[componentName] =
                                 issueToRelink.blamedComponents[componentName] or {}
                         end
@@ -96,7 +111,9 @@ do
         if (num == 0 and atLeastOneWorkaround == nil) then
             local newOccurrenceLocation = self:_getOccurrenceLocation(4)
             knownIssueString =
-                ("[91mCannot blame anything in %s[0m. A new or non-issue?"):format(newOccurrenceLocation)
+                ("[91mCannot blame anything in %s. Also, no workaround available.[0m A new or non-issue?"):format(
+                newOccurrenceLocation
+            )
         else
             if (atLeastOneWorkaround == nil) then
                 knownIssueString = "None for now."
@@ -104,11 +121,15 @@ do
                 knownIssueString = atLeastOneWorkaround
             end
 
-            knownIssueString = knownIssueString .. " Known issue in "
-            for blamedComponentName, _ in pairs(issueToRelink.blamedComponents) do
-                knownIssueString = knownIssueString .. blamedComponentName .. "/"
+            if (num > 0) then
+                knownIssueString = knownIssueString .. " Known issue in "
+                for blamedComponentName, _ in pairs(issueToRelink.blamedComponents) do
+                    knownIssueString = knownIssueString .. blamedComponentName .. "/"
+                end
+                knownIssueString = knownIssueString:sub(1, -2)
+            else
+                knownIssueString = knownIssueString .. " [91mWill be fixed in future releases.[0m"
             end
-            knownIssueString = knownIssueString:sub(1, -2)
         end
 
         atLeastOneOccurrence.workaround = knownIssueString
@@ -119,13 +140,6 @@ do
     end
 
     function IssueTracker:_printKnownIssues()
-        self:_TRACK_INTERNAL_ISSUE(
-            "Lua",
-            "Lua does not support continue statements",
-            "Use deeply nested ifs or labels in a future Lua update/Lua version instead."
-        )
-        self:_TRACK_INTERNAL_ISSUE("Lua", "Lua does not support labels", "Stick to ifs until next Lua update")
-
         local headerToPrint = "[96m[4mIssue Tracker: All linked known issues:[0m"
         for componentName, component in pairs(self.components) do
             local componentToPrint = ("\n[4m%s[0m:"):format(componentName)
@@ -146,7 +160,13 @@ do
                             ("[94m%s[0m:%s"):format(occurrenceLocation, self:_prefixAllLines(issueDescription, " "))
                         )
                         assert(occurrence.workaround)
-                        self:_log(("  Workaround:%s\n"):format(self:_prefixAllLines(occurrence.workaround, " ")))
+                        self:_log(("  Workaround:%s"):format(self:_prefixAllLines(occurrence.workaround, " ")))
+
+                        local issuesPlural = "issues"
+                        if (issue.numRelatedTo == 1) then
+                            issuesPlural = "issue"
+                        end
+                        self:_log(("  Related to %d %s.\n"):format(issue.numRelatedTo, issuesPlural))
                     end
                 end
             end
@@ -154,12 +174,6 @@ do
     end
 
     function IssueTracker:_findBestDecriptionForIssue(issueDescription, issue)
-        self:_TRACK_INTERNAL_ISSUE(
-            "IssueTracker",
-            "The longest description is not necessarily the best one.",
-            "Let's see how people use IssueTracker for now."
-        )
-
         local longestDescription = issueDescription
         local longestDescriptionLength = longestDescription:len()
         for desc, _ in pairs(issue.descriptions) do
@@ -178,9 +192,6 @@ do
     end
 
     function IssueTracker:_printIssues(printAll)
-        self:_TRACK_INTERNAL_ISSUE("Lua", "continue statements", "nested ifs")
-        self:_TRACK_INTERNAL_ISSUE("Lua", "labels", "nested ifs")
-
         if (printAll) then
             self:_log(
                 "\n" .. "[96m[4mIssue Tracker: All manually highlighted issues in code that ran during tests:[0m"
@@ -202,7 +213,7 @@ do
                     issue.numOccurrences,
                     self:_prefixAllLines(self:_findBestDecriptionForIssue(issueDescription, issue), " ")
                 )
-                local issueWasPrinted = false
+
                 if (not issue.isLinked) then
                     numUnique = numUnique + 1
                     num = num + issue.numOccurrences
@@ -238,7 +249,7 @@ do
         end
         if (num == 0) then
             self:_log(
-                ("\nFound %d total issues. That means everything is fine or nobody cares. Use TRACK_ISSUE() to leave hints in code.\n"):format(
+                ('\nFound %d total issues. That means everything is fine or nobody cares. Use TRACK_ISSUE("Blamed Topic", "Description") to leave hints in code.\n'):format(
                     num,
                     numUnique,
                     numWorkedAround
@@ -246,13 +257,15 @@ do
             )
         else
             self:_log(
-                ("\nFound %d unique (%d total collected) issues in code that ran during tests, %d withhout a workaround.\n" ..
-                    "If you like to see all issues, run the task 'triggerAllIssues'\n"):format(
+                ("\nFound %d unique (%d total collected) issues in code that ran during tests, %d withhout a workaround."):format(
                     numUnique,
                     num,
                     numUnique - numWorkedAround
                 )
             )
+            if (not printAll) then
+                self:_log("If you like to see all issues, run the task 'triggerAllIssues'\n")
+            end
         end
     end
 
@@ -321,9 +334,11 @@ end
 
 MULTILINE_TEXT = function(...)
     local completeString = ""
-    for _, argument in pairs(arg) do
+    for _, argument in ipairs(arg) do
         completeString = completeString .. argument .. "\n"
     end
+
+    completeString = completeString:sub(1, -2)
 
     return completeString
 end
