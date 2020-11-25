@@ -1882,8 +1882,6 @@ do
 
     imgui.PushStyleVar_2(imgui.constant.StyleVar.ItemSpacing, 0.0, 0.0)
     imgui.PushStyleVar_2(imgui.constant.StyleVar.FramePadding, 0.0, 0.0)
-    imgui.PushStyleColor(imgui.constant.Col.ButtonActive, 0xFF000000)
-    imgui.PushStyleColor(imgui.constant.Col.ButtonHovered, 0xFF202020)
 
     local index = 1
     while index < #self.blobTable do
@@ -1926,8 +1924,6 @@ do
       index = index + skipDistance
     end
 
-    imgui.PopStyleColor()
-    imgui.PopStyleColor()
     imgui.PopStyleVar()
     imgui.PopStyleVar()
   end
@@ -1943,6 +1939,17 @@ do
     else
       return secondNumber
     end
+  end
+
+  -- Override
+  function AtcStringInlineButtonBlob:renderToCanvas()
+    imgui.PushStyleColor(imgui.constant.Col.ButtonActive, 0xFF000000)
+    imgui.PushStyleColor(imgui.constant.Col.ButtonHovered, 0xFF202020)
+
+    self.renderToCanvas(self)
+
+    imgui.PopStyleColor()
+    imgui.PopStyleColor()
   end
 
   -- Override
