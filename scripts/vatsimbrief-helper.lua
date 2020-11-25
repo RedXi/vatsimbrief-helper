@@ -1428,7 +1428,7 @@ local function refreshVatsimDataNow()
     copas.addthread(
       function()
         CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.DOWNLOADING
-        local url = "http://cluster.data.vatsim.net/vatsim-data.txt"
+        local url = "http://data.vatsim.net/vatsim-data.txt"
         performDefaultHttpGetRequest(url, processNewVatsimData, processVatsimDataDownloadFailure)
       end
     )
