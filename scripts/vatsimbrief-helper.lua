@@ -2060,7 +2060,7 @@ local CHAR_WIDTH_PIXELS = 7
 local LINE_HEIGHT_PIXELS = 18
 
 local AtcWindow = {
-  WidthInCharacters = 63,
+  WidthInCharacters = 67,
   FontScale = getConfiguredAtcFontScaleSettingDefault1()
 }
 
@@ -2199,9 +2199,22 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     -- Render route
     if stringIsNotEmpty(FlightplanId) then
       -- If there's a flightplan, render it
-      Route =
-        FlightplanOriginIcao ..
-        " - " .. FlightplanDestIcao .. " (" .. FlightplanOriginName .. " to " .. FlightplanDestName .. ")"
+      if stringIsNotEmpty(FlightplanAltIcao) then
+        -- Note: Once, the alt name was shown as well, but it takes too much space even though the value is pretty low
+        -- Consequently, the alt name was removed in 11/2020
+        -- local altName = .. " / " .. FlightplanAltName
+        local altName = ""
+        Route =
+          FlightplanOriginIcao ..
+          " - " ..
+            FlightplanDestIcao ..
+              " / " ..
+                FlightplanAltIcao .. " (" .. FlightplanOriginName .. " to " .. FlightplanDestName .. altName .. ")"
+      else
+        Route =
+          FlightplanOriginIcao ..
+          " - " .. FlightplanDestIcao .. " (" .. FlightplanOriginName .. " to " .. FlightplanDestName .. ")"
+      end
     else
       -- It's more beautiful to show the "downloading" status in the title where the route appears in a few seconds
       if CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.DOWNLOADING then
