@@ -2198,20 +2198,16 @@ function buildVatsimbriefHelperAtcWindowCanvas()
       -- If there's a flightplan, render it
       if stringIsNotEmpty(FlightplanAltIcao) then
         Route =
-          FlightplanCallsign ..
-          ":  " ..
-            FlightplanOriginIcao ..
-              " - " ..
-                FlightplanDestIcao ..
-                  " / " ..
-                    FlightplanAltIcao ..
-                      " (" .. FlightplanOriginName .. " to " .. FlightplanDestName .. " / " .. FlightplanAltName .. ")"
+          FlightplanOriginIcao ..
+          " - " ..
+            FlightplanDestIcao ..
+              " / " ..
+                FlightplanAltIcao ..
+                  " (" .. FlightplanOriginName .. " to " .. FlightplanDestName .. " / " .. FlightplanAltName .. ")"
       else
         Route =
-          FlightplanCallsign ..
-          ":  " ..
-            FlightplanOriginIcao ..
-              " - " .. FlightplanDestIcao .. " (" .. FlightplanOriginName .. " to " .. FlightplanDestName .. ")"
+          FlightplanOriginIcao ..
+          " - " .. FlightplanDestIcao .. " (" .. FlightplanOriginName .. " to " .. FlightplanDestName .. ")"
       end
     else
       -- It's more beautiful to show the "downloading" status in the title where the route appears in a few seconds
@@ -2327,7 +2323,11 @@ local vatsimbriefHelperAtcWindow = nil
 
 function updateAtcWindowTitle()
   if vatsimbriefHelperAtcWindow ~= nil then
-    float_wnd_set_title(vatsimbriefHelperAtcWindow, ("Vatsimbrief Helper ATC (%s)"):format(os.date("%H%MZ")))
+    local title = ("Vatsimbrief Helper ATC (%s)"):format(os.date("%H%MZ"))
+    if stringIsNotEmpty(FlightplanCallsign) then
+      title = title .. " for " .. FlightplanCallsign
+    end
+    float_wnd_set_title(vatsimbriefHelperAtcWindow, title)
   end
 end
 
