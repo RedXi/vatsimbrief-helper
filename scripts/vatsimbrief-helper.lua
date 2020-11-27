@@ -1946,7 +1946,7 @@ do
     imgui.PushStyleColor(imgui.constant.Col.ButtonActive, 0xFF000000)
     imgui.PushStyleColor(imgui.constant.Col.ButtonHovered, 0xFF202020)
 
-    self.renderToCanvas(self)
+    InlineButtonImguiBlob.renderToCanvas(self)
 
     imgui.PopStyleColor()
     imgui.PopStyleColor()
