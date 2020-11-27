@@ -2056,7 +2056,7 @@ end
 -- ATC UI handling
 --
 
-local CHAR_WIDTH_PIXELS = 6
+local CHAR_WIDTH_PIXELS = 7
 local LINE_HEIGHT_PIXELS = 18
 
 local AtcWindow = {
@@ -2199,19 +2199,9 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     -- Render route
     if stringIsNotEmpty(FlightplanId) then
       -- If there's a flightplan, render it
-      if stringIsNotEmpty(FlightplanAltIcao) then
-        Route =
-          FlightplanOriginIcao ..
-          " - " ..
-            FlightplanDestIcao ..
-              " / " ..
-                FlightplanAltIcao ..
-                  " (" .. FlightplanOriginName .. " to " .. FlightplanDestName .. " / " .. FlightplanAltName .. ")"
-      else
-        Route =
-          FlightplanOriginIcao ..
-          " - " .. FlightplanDestIcao .. " (" .. FlightplanOriginName .. " to " .. FlightplanDestName .. ")"
-      end
+      Route =
+        FlightplanOriginIcao ..
+        " - " .. FlightplanDestIcao .. " (" .. FlightplanOriginName .. " to " .. FlightplanDestName .. ")"
     else
       -- It's more beautiful to show the "downloading" status in the title where the route appears in a few seconds
       if CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.DOWNLOADING then
