@@ -2056,6 +2056,9 @@ end
 -- ATC UI handling
 --
 
+local CHAR_WIDTH_PIXELS = 6
+local LINE_HEIGHT_PIXELS = 18
+
 local AtcWindow = {
   WidthInCharacters = 63,
   FontScale = getConfiguredAtcFontScaleSettingDefault1()
@@ -2271,6 +2274,9 @@ function buildVatsimbriefHelperAtcWindowCanvas()
       end
     end
 
+    -- Update ATC window title now
+    updateAtcWindowTitle()
+
     AtcWindowLastRenderedSimbriefFlightplanFetchStatus = CurrentSimbriefFlightplanFetchStatus
     AtcWindowLastRenderedVatsimDataFetchStatus = CurrentVatsimDataFetchStatus
     AtcWindowLastRenderedFlightplanId = FlightplanId
@@ -2350,7 +2356,9 @@ function createVatsimbriefHelperAtcWindow()
     refreshVatsimDataNow()
     saveConfiguration()
     local scaling = getConfiguredAtcFontScaleSettingDefault1()
-    vatsimbriefHelperAtcWindow = float_wnd_create(560 * scaling, 90 * scaling, 1, true)
+    local windowWidth = CHAR_WIDTH_PIXELS * AtcWindow.WidthInCharacters * scaling + 10
+    local windowHeight = LINE_HEIGHT_PIXELS * 5 * scaling
+    vatsimbriefHelperAtcWindow = float_wnd_create(windowWidth, windowHeight, 1, true)
     updateAtcWindowTitle()
     float_wnd_set_imgui_builder(vatsimbriefHelperAtcWindow, "buildVatsimbriefHelperAtcWindowCanvas")
     float_wnd_set_onclose(vatsimbriefHelperAtcWindow, "destroyVatsimbriefHelperAtcWindow")
