@@ -57,6 +57,9 @@ end
 local function stringEndsWith(s, e)
   return stringIsEmpty(e) or s:sub(-(#e)) == e
 end
+local function stringStripTrailingCharacters(s, n)
+  return s:sub(1, #s - n)
+end
 local function defaultIfBlank(s, d)
   if s == nil or stringIsEmpty(trim(s)) then
     return d
@@ -1809,6 +1812,7 @@ add_macro(
 -- Helper for inline ATC buttons
 --
 
+local SelectedAtcFrequenciesChangedTimestamp = nil
 local InlineButtonImguiBlobClass
 do
   InlineButtonImguiBlob = {
@@ -1961,54 +1965,77 @@ do
     InlineButtonImguiBlob.addTextWithoutNewline(self, nextTextSubstring)
   end
 
-  function AtcStringInlineButtonBlob:build(fullAtcString)
+  function AtcStringInlineButtonBlob:build(stations, isRadioHelperInstalled, maxWidth)
     self:setDefaultButtonCallbackFunction(
       function(buttonText)
-        print(buttonText)
-        VHFHelperPublicInterface.enterFrequencyProgrammaticallyAsString(buttonText)
+        logMsg("Selected frequency in ATC window: " .. buttonText)
+        local formattedFrequency = buttonText .. string.rep("0", 7 - string.len(buttonText)) -- Append zeros for format XXX.XXX
+        VHFHelperPublicInterface.enterFrequencyProgrammaticallyAsString(formattedFrequency)
       end
     )
 
     TRACK_ISSUE("Lua", "continue statement", "nested ifs")
     TRACK_ISSUE("Lua", "labels", "nested ifs")
 
-    local continue = nil
-    local textIndex = 1
-    while (textIndex <= #fullAtcString) do
-      local nextEqualSignIndex = fullAtcString:find("=", textIndex)
-      local nextNewlineIndex = fullAtcString:find("\n", textIndex)
-
-      local nextStop = #fullAtcString
-      nextStop = self:_mathMinNilIsInfinite(nextEqualSignIndex, nextStop)
-      nextStop = self:_mathMinNilIsInfinite(nextNewlineIndex, nextStop)
-
-      continue = false
-      if (nextStop == nextNewlineIndex) then
-        self:addTextWithoutNewline(fullAtcString:sub(textIndex, nextNewlineIndex - 1))
-        self:addNewline()
-        textIndex = nextNewlineIndex + 1
-        continue = true
+    -- Do some calculations for correct alignment of output
+    local maxKeyLength = 0
+    for i = 1, #stations do
+      local airportIcao = stations[i][1]
+      if string.len(airportIcao) > maxKeyLength then
+        maxKeyLength = string.len(airportIcao)
       end
+    end
+    local separatorBetweenLocationAndFrequencies = ": "
+    maxKeyLength = maxKeyLength + string.len(separatorBetweenLocationAndFrequencies)
+    local padding = string.rep(" ", maxKeyLength)
+    local maxValueLength = maxWidth - maxKeyLength
 
-      if (not continue) then
-        if (nextStop == #fullAtcString) then
-          self:addTextWithoutNewline(fullAtcString:sub(textIndex, #fullAtcString))
-          break
+    -- Build text only version of stations for the case no Radio Helper is installed
+    for i = 1, #stations do
+      local stationsEntryOfAirport = stations[i]
+      local airportIcao = stationsEntryOfAirport[1]
+      local stationsOfAirport = stationsEntryOfAirport[2]
+
+      if i > 1 then -- Otherwise, we're starting on the left already
+        self:addNewline()
+      end
+      local currentLineLength = 0
+      local lineHasPayload = false
+
+      self:addTextWithoutNewline(airportIcao .. separatorBetweenLocationAndFrequencies)
+      currentLineLength =
+        currentLineLength + string.len(airportIcao) + string.len(separatorBetweenLocationAndFrequencies)
+
+      if #stationsOfAirport == 0 then
+        self:addTextWithoutNewline("-")
+        currentLineLength = currentLineLength + 1
+      end
+      for j = 1, #stationsOfAirport do
+        local stationOfAirport = stationsOfAirport[j]
+        local stationOfAirportName = stationOfAirport[1]
+        local stationOfAirportFrequency = stationOfAirport[2]
+
+        local entryLength = 0
+        if lineHasPayload then
+          entryLength = entryLength + string.len(" ")
         end
+        entryLength =
+          entryLength + string.len(stationOfAirportName) + string.len("=") + string.len(stationOfAirportFrequency)
 
-        self:addTextWithoutNewline(fullAtcString:sub(textIndex, nextEqualSignIndex))
-
-        local fullFrequencyStringLength = 7
-        local fullFrequencyString =
-          fullAtcString:sub(nextEqualSignIndex + 1, nextEqualSignIndex + fullFrequencyStringLength)
-
-        continue = false
-        if (not VHFHelperPublicInterface.isValidFrequency(fullFrequencyString)) then
-          textIndex = nextEqualSignIndex + 1
-          continue = true
+        if currentLineLength + entryLength > maxWidth then
+          self:addNewline()
+          self:addTextWithoutNewline(padding)
+          currentLineLength = string.len(padding)
+          lineHasPayload = false
         end
+        currentLineLength = currentLineLength + entryLength
 
-        if (not continue) then
+        if lineHasPayload then
+          self:addTextWithoutNewline(" ")
+        end
+        lineHasPayload = true -- I.e. now we we'll add some. Don't forget to notice that.
+        self:addTextWithoutNewline(stationOfAirportName .. "=")
+        if isRadioHelperInstalled then
           TRACK_ISSUE(
             "Imgui",
             "The ImGUI LUA binding in FlyWithLua does not include GetStyle.",
@@ -2019,15 +2046,15 @@ do
           local colorA320COMOrange = 0xFF00AAFF
           local colorA320COMGreen = 0xFF00AA00
 
-          if (VHFHelperPublicInterface.isCurrentlyEntered(fullFrequencyString)) then
-            self:addCustomColorDefaultButton(fullFrequencyString, colorA320COMGreen, colorDefaultImguiBackground)
-          elseif (VHFHelperPublicInterface.isCurrentlyTunedIn(fullFrequencyString)) then
-            self:addCustomColorDefaultButton(fullFrequencyString, colorA320COMOrange, colorDefaultImguiBackground)
+          if (VHFHelperPublicInterface.isCurrentlyEntered(stationOfAirportFrequency)) then
+            self:addCustomColorDefaultButton(stationOfAirportFrequency, colorA320COMGreen, colorDefaultImguiBackground)
+          elseif (VHFHelperPublicInterface.isCurrentlyTunedIn(stationOfAirportFrequency)) then
+            self:addCustomColorDefaultButton(stationOfAirportFrequency, colorA320COMOrange, colorDefaultImguiBackground)
           else
-            self:addDefaultButton(fullFrequencyString)
+            self:addDefaultButton(stationOfAirportFrequency)
           end
-
-          textIndex = nextEqualSignIndex + fullFrequencyStringLength + 1
+        else
+          self:addTextWithoutNewline(stationOfAirportFrequency)
         end
       end
     end
@@ -2035,21 +2062,11 @@ do
 end
 
 function onVHFHelperFrequencyChanged()
-  AtcBlob = nil
+  SelectedAtcFrequenciesChangedTimestamp = os.clock()
 end
 
-local function buildOrPaintCurrentAtcString(fullAtcString)
-  if (VHFHelperPublicInterface == nil) then
-    imgui.TextUnformatted(fullAtcString)
-    return
-  end
-
-  if (AtcBlob == nil) then
-    AtcBlob = AtcStringInlineButtonBlob:new()
-    AtcBlob:build(fullAtcString)
-  end
-
-  AtcBlob:renderToCanvas()
+local function isRadioHelperInstalled()
+  return VHFHelperPublicInterface ~= nil
 end
 
 --
@@ -2061,16 +2078,21 @@ local LINE_HEIGHT_PIXELS = 18
 
 local AtcWindow = {
   WidthInCharacters = 67,
-  FontScale = getConfiguredAtcFontScaleSettingDefault1()
+  FontScale = getConfiguredAtcFontScaleSettingDefault1(),
+  Stations = nil,
+  StationsStatus = "",
+  AtcsString = "",
+  StationsSelection = nil,
+  LastSelectedAtcFrequenciesChangedTimestamp = nil,
+  AtcWindowLastRenderedFlightplanId = nil,
+  LastRadioHelperInstalledState = nil
 }
 
-local AtcWindowLastRenderedFlightplanId = nil
 local AtcWindowLastAtcIdentifiersUpdatedTimestamp = nil
 local AtcWindowHasRenderedContent = false
 
 local Route = ""
 local RouteSeparatorLine = ""
-local Atcs = ""
 
 local AtcWindowLastRenderedSimbriefFlightplanFetchStatus = CurrentSimbriefFlightplanFetchStatus
 local AtcWindowFlightplanDownloadStatus = ""
@@ -2082,7 +2104,7 @@ local AtcWindowVatsimDataDownloadStatusColor = 0
 local showVatsimDataIsDownloading = false
 local showVatsimDataIsDisabled = false
 
-local function renderAtcString(info)
+local function stationToNameFrequencyArray(info)
   local shortId
 
   -- Try to remove airport icao from ID
@@ -2098,10 +2120,20 @@ local function renderAtcString(info)
     shortId = shortId:sub(2)
   end
 
-  return shortId .. "=" .. info.frequency
+  -- Remove trailing zeros from frequency
+  local strippedFrequency = info.frequency
+  if stringEndsWith(strippedFrequency, "000") then
+    strippedFrequency = stringStripTrailingCharacters(strippedFrequency, 3)
+  elseif stringEndsWith(strippedFrequency, "00") then
+    strippedFrequency = stringStripTrailingCharacters(strippedFrequency, 2)
+  elseif stringEndsWith(strippedFrequency, "0") then
+    strippedFrequency = stringStripTrailingCharacters(strippedFrequency, 1)
+  end
+
+  return {shortId, strippedFrequency}
 end
 
-local function renderAirportAtcToString(airportIcao, airportIata)
+local function assembleAirportStations(airportIcao, airportIata)
   local atis = {}
   local del = {}
   local gnd = {}
@@ -2115,19 +2147,19 @@ local function renderAirportAtcToString(airportIcao, airportIata)
   for _, v in pairs(VatsimData.MapAtcIdentifiersToAtcInfo) do
     if v.id:find(icaoPrefix) == 1 or v.id:find(iataPrefix) == 1 then
       if stringEndsWith(v.id, "_ATIS") then
-        table.insert(atis, renderAtcString(v))
+        table.insert(atis, stationToNameFrequencyArray(v))
       elseif stringEndsWith(v.id, "_DEL") then
-        table.insert(del, renderAtcString(v))
+        table.insert(del, stationToNameFrequencyArray(v))
       elseif stringEndsWith(v.id, "_GND") then
-        table.insert(gnd, renderAtcString(v))
+        table.insert(gnd, stationToNameFrequencyArray(v))
       elseif stringEndsWith(v.id, "_TWR") then
-        table.insert(twr, renderAtcString(v))
+        table.insert(twr, stationToNameFrequencyArray(v))
       elseif stringEndsWith(v.id, "_DEP") then
-        table.insert(dep, renderAtcString(v))
+        table.insert(dep, stationToNameFrequencyArray(v))
       elseif stringEndsWith(v.id, "_APP") then
-        table.insert(app, renderAtcString(v))
+        table.insert(app, stationToNameFrequencyArray(v))
       else
-        table.insert(other, renderAtcString(v))
+        table.insert(other, stationToNameFrequencyArray(v))
       end
     end
   end
@@ -2155,23 +2187,25 @@ local function renderAirportAtcToString(airportIcao, airportIata)
     table.insert(collection, v)
   end
 
-  if #collection == 0 then
-    return "-"
-  else
-    return table.concat(collection, " ")
-  end
+  return collection
 end
 
 function buildVatsimbriefHelperAtcWindowCanvas()
   -- Invent a caching mechanism to prevent rendering the strings each frame
-  local flightplanChanged = AtcWindowLastRenderedFlightplanId ~= FlightplanId
+  local flightplanChanged = AtcWindow.AtcWindowLastRenderedFlightplanId ~= FlightplanId
   local atcIdentifiersUpdated = AtcWindowLastAtcIdentifiersUpdatedTimestamp ~= VatsimData.AtcIdentifiersUpdatedTimestamp
   local flightplanFetchStatusChanged =
     AtcWindowLastRenderedSimbriefFlightplanFetchStatus ~= CurrentSimbriefFlightplanFetchStatus
   local vatsimDataFetchStatusChanged = AtcWindowLastRenderedVatsimDataFetchStatus ~= CurrentVatsimDataFetchStatus
+  local selectedAtcFrequenciesChanged =
+    LastSelectedAtcFrequenciesChangedTimestamp == nil or
+    SelectedAtcFrequenciesChangedTimestamp ~= LastSelectedAtcFrequenciesChangedTimestamp
+  local radioHelperInstalledStateChanged = LastRadioHelperInstalledState ~= isRadioHelperInstalled()
   local renderContent =
     flightplanChanged or atcIdentifiersUpdated or flightplanFetchStatusChanged or vatsimDataFetchStatusChanged or
-    not AtcWindowHasRenderedContent
+    not AtcWindowHasRenderedContent or
+    selectedAtcFrequenciesChanged or
+    radioHelperInstalledStateChanged
   if renderContent then
     -- Render download status of flightplan
     local statusType = CurrentSimbriefFlightplanFetchStatus.level
@@ -2226,9 +2260,12 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     RouteSeparatorLine = string.rep("-", #Route)
 
     -- Try to render ATC data
-    AtcBlob = nil
-    if numberIsNilOrZero(VatsimData.AtcIdentifiersUpdatedTimestamp) then
-      Atcs = ""
+    if numberIsNilOrZero(VatsimData.AtcIdentifiersUpdatedTimestamp) then -- We have NO ATC data (yet?)
+      AtcWindow.StationsStatus = ""
+      AtcWindow.Stations = nil
+      AtcWindow.AtcsString = ""
+      AtcWindow.StationsSelection = nil
+
       -- Only show "downloading" message when there is no VATSIM data yet and no other download status is rendered
       showVatsimDataIsDownloading = CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.DOWNLOADING
       showVatsimDataIsDisabled =
@@ -2238,41 +2275,47 @@ function buildVatsimbriefHelperAtcWindowCanvas()
       showVatsimDataIsDownloading = false
       showVatsimDataIsDisabled = false
       if stringIsEmpty(FlightplanId) then
-        Atcs = ("Got %d ATC stations. Waiting for flight plan ..."):format(#VatsimData.MapAtcIdentifiersToAtcInfo)
+        AtcWindow.StationsStatus =
+          ("Got %d ATC stations. Waiting for flight plan ..."):format(#VatsimData.MapAtcIdentifiersToAtcInfo)
+        AtcWindow.Stations = nil
+        AtcWindow.AtcsString = ""
+        AtcWindow.StationsSelection = nil
       else
         if #VatsimData.MapAtcIdentifiersToAtcInfo == 0 then
-          Atcs = "No ATCs found. This will probably be a technical problem."
+          AtcWindow.StationsStatus = "No ATCs found. This will probably be a technical problem."
+          AtcWindow.Stations = nil
+          AtcWindow.AtcsString = ""
+          AtcWindow.StationsSelection = nil
         else
-          local location = {FlightplanOriginIcao, FlightplanDestIcao}
-          local frequencies = {
-            renderAirportAtcToString(FlightplanOriginIcao, FlightplanOriginIata),
-            renderAirportAtcToString(FlightplanDestIcao, FlightplanDestIata)
+          -- Build interactive version with clickable frequencies if Radio Helper is installed
+          AtcWindow.StationsStatus = "" -- Show stations instead of explicit status ...
+          AtcWindow.Stations = {} -- To be filled ...
+          AtcWindow.AtcsString = "" -- To be filled ...
+          AtcWindow.StationsSelection = nil -- To be filled ...
+
+          -- Assemble list of stations and respective frequencies
+          local consideredAirports = {
+            {FlightplanOriginIcao, FlightplanOriginIata},
+            {FlightplanDestIcao, FlightplanDestIata}
           }
           if stringIsNotEmpty(FlightplanAltIcao) then
-            table.insert(location, FlightplanAltIcao)
-            table.insert(frequencies, renderAirportAtcToString(FlightplanAltIcao, FlightplanAltIata))
+            table.insert(consideredAirports, {FlightplanAltIcao, FlightplanAltIata})
           end
-          local maxKeyLength = 0
-          for i = 1, #location do
-            if string.len(location[i]) > maxKeyLength then
-              maxKeyLength = string.len(location[i])
-            end
-          end
-          local separatorBetweenLocationAndFrequencies = ": "
-          maxKeyLength = maxKeyLength + string.len(separatorBetweenLocationAndFrequencies)
-          local padding = string.rep(" ", maxKeyLength)
-          local maxValueLength = AtcWindow.WidthInCharacters - maxKeyLength
 
-          Atcs = ""
-          for i = 1, #location do
-            Atcs =
-              Atcs ..
-              ("%s%s%s\n"):format(
-                location[i],
-                separatorBetweenLocationAndFrequencies,
-                wrapStringAtMaxlengthWithPadding(frequencies[i], maxValueLength, padding)
-              )
+          for i = 1, #consideredAirports do
+            local consideredAirport = consideredAirports[i]
+            local consideredAirportIcao = consideredAirport[1]
+            local consideredAirportIata = consideredAirport[2]
+
+            local stations = assembleAirportStations(consideredAirportIcao, consideredAirportIata)
+
+            local stationsEntryOfAirport = {consideredAirportIcao, stations}
+            table.insert(AtcWindow.Stations, stationsEntryOfAirport)
           end
+
+          -- Build interactive version if Radio Helper is installed
+          AtcWindow.StationsSelection = AtcStringInlineButtonBlob:new()
+          AtcWindow.StationsSelection:build(AtcWindow.Stations, isRadioHelperInstalled(), AtcWindow.WidthInCharacters)
         end
       end
     end
@@ -2282,8 +2325,10 @@ function buildVatsimbriefHelperAtcWindowCanvas()
 
     AtcWindowLastRenderedSimbriefFlightplanFetchStatus = CurrentSimbriefFlightplanFetchStatus
     AtcWindowLastRenderedVatsimDataFetchStatus = CurrentVatsimDataFetchStatus
-    AtcWindowLastRenderedFlightplanId = FlightplanId
+    AtcWindow.AtcWindowLastRenderedFlightplanId = FlightplanId
     AtcWindowLastAtcIdentifiersUpdatedTimestamp = VatsimData.AtcIdentifiersUpdatedTimestamp
+    LastSelectedAtcFrequenciesChangedTimestamp = SelectedAtcFrequenciesChangedTimestamp
+    LastRadioHelperInstalledState = isRadioHelperInstalled()
     AtcWindowHasRenderedContent = true
   end
 
@@ -2323,8 +2368,11 @@ function buildVatsimbriefHelperAtcWindowCanvas()
   if showVatsimDataIsDownloading then
     imgui.TextUnformatted("Downloading VATSIM data ...")
   end
-  if stringIsNotEmpty(Atcs) then
-    buildOrPaintCurrentAtcString(Atcs)
+  if stringIsNotEmpty(AtcWindow.StationsStatus) then
+    imgui.TextUnformatted(AtcWindow.StationsStatus)
+  end
+  if AtcWindow.StationsSelection ~= nil then
+    AtcWindow.StationsSelection:renderToCanvas()
   end
 end
 
@@ -2360,7 +2408,7 @@ function createVatsimbriefHelperAtcWindow()
     saveConfiguration()
     local scaling = getConfiguredAtcFontScaleSettingDefault1()
     local windowWidth = CHAR_WIDTH_PIXELS * AtcWindow.WidthInCharacters * scaling + 10
-    local windowHeight = LINE_HEIGHT_PIXELS * 5 * scaling
+    local windowHeight = LINE_HEIGHT_PIXELS * 5 * scaling + 5
     vatsimbriefHelperAtcWindow = float_wnd_create(windowWidth, windowHeight, 1, true)
     updateAtcWindowTitle()
     float_wnd_set_imgui_builder(vatsimbriefHelperAtcWindow, "buildVatsimbriefHelperAtcWindowCanvas")
