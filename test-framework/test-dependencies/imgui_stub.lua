@@ -177,6 +177,30 @@ function imgui:findCommandInList(startIndex, commandType)
     return nil
 end
 
+function imgui:debugPrintCommandList()
+    logMsg("ImguiStub: All commands captured in last frame:\n" .. "-----------------------------------------------")
+    local num = 0
+    for _, command in pairs(self.LastFrameCommandList) do
+        num = num + 1
+        local commandLine = ""
+        commandLine = commandLine .. ("%d type=%s "):format(num, command.type)
+        if
+            (command.type == imgui.Constants.Checkbox or command.type == imgui.Constants.SliderFloat or
+                command.type == imgui.Constants.InputText)
+         then
+            commandLine = commandLine .. ("description=%s"):format(command.description)
+        elseif (command.type == imgui.Constants.Button or command.type == imgui.Constants.SmallButton) then
+            commandLine = commandLine .. ("title=%s"):format(command.title)
+        elseif (command.type == imgui.Constants.TextUnformatted) then
+            commandLine = commandLine .. ("textString=%s"):format(command.textString)
+        elseif (command.type == imgui.Constants.PushStyleColor) then
+            commandLine = commandLine .. ("color=%s"):format(tostring(command.color))
+        end
+        logMsg(commandLine)
+    end
+    logMsg(("%d commands captured"):format(num))
+end
+
 function imgui:checkStringForWatchStrings(value)
     if (imgui.watchString ~= nil and value:find(imgui.watchString)) then
         imgui.watchStringFound = true

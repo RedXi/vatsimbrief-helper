@@ -1931,6 +1931,11 @@ local AtcStringInlineButtonBlobClass
 do
   AtcStringInlineButtonBlob = InlineButtonImguiBlob:new()
 
+  function AtcStringInlineButtonBlob:_getFullFrequencyStringForRadioHelperInterfaceVersion1(
+    possiblyShorterFrequencyString)
+    return possiblyShorterFrequencyString .. string.rep("0", 7 - string.len(possiblyShorterFrequencyString)) -- Append zeros for format XXX.XXX
+  end
+
   function AtcStringInlineButtonBlob:_mathMinNilIsInfinite(firstNumberOrNil, secondNumber)
     if (firstNumberOrNil ~= nil and firstNumberOrNil < secondNumber) then
       return firstNumberOrNil
@@ -1963,8 +1968,9 @@ do
     self:setDefaultButtonCallbackFunction(
       function(buttonText)
         logMsg("Selected frequency in ATC window: " .. buttonText)
-        local formattedFrequency = buttonText .. string.rep("0", 7 - string.len(buttonText)) -- Append zeros for format XXX.XXX
-        VHFHelperPublicInterface.enterFrequencyProgrammaticallyAsString(formattedFrequency)
+        VHFHelperPublicInterface.enterFrequencyProgrammaticallyAsString(
+          self:_getFullFrequencyStringForRadioHelperInterfaceVersion1(buttonText)
+        )
       end
     )
 
@@ -2040,12 +2046,25 @@ do
           local colorA320COMOrange = 0xFF00AAFF
           local colorA320COMGreen = 0xFF00AA00
 
-          if (VHFHelperPublicInterface.isCurrentlyEntered(stationOfAirportFrequency)) then
-            self:addCustomColorDefaultButton(stationOfAirportFrequency, colorA320COMGreen, colorDefaultImguiBackground)
-          elseif (VHFHelperPublicInterface.isCurrentlyTunedIn(stationOfAirportFrequency)) then
-            self:addCustomColorDefaultButton(stationOfAirportFrequency, colorA320COMOrange, colorDefaultImguiBackground)
+          local fullFreqString = self:_getFullFrequencyStringForRadioHelperInterfaceVersion1(stationOfAirportFrequency)
+          if (VHFHelperPublicInterface.isValidFrequency(fullFreqString)) then
+            if (VHFHelperPublicInterface.isCurrentlyEntered(stationOfAirportFrequency)) then
+              self:addCustomColorDefaultButton(
+                stationOfAirportFrequency,
+                colorA320COMGreen,
+                colorDefaultImguiBackground
+              )
+            elseif (VHFHelperPublicInterface.isCurrentlyTunedIn(stationOfAirportFrequency)) then
+              self:addCustomColorDefaultButton(
+                stationOfAirportFrequency,
+                colorA320COMOrange,
+                colorDefaultImguiBackground
+              )
+            else
+              self:addDefaultButton(stationOfAirportFrequency)
+            end
           else
-            self:addDefaultButton(stationOfAirportFrequency)
+            self:addTextWithoutNewline(stationOfAirportFrequency)
           end
         else
           self:addTextWithoutNewline(stationOfAirportFrequency)
