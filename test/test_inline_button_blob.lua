@@ -3,6 +3,18 @@ vhfHelperStub = require("vhf_helper")
 
 TestInlineButtonBlob = {}
 
+TRACK_ISSUE(
+    "Tech Debt",
+    "This is a separate component already in VR Radio Helper. Move it to script_modules and remove it from main script. Makes updating and testing easier."
+)
+TRACK_ISSUE(
+    "Tech Debt",
+    MULTILINE_TEXT(
+        "Improve testing the blob with an iterator",
+        'assertTrue(imguiStub.nextElement(imguiStub.Constants.TextUnformatted, "199.998"))',
+        "assertTrue(imguiStub.nextElement(imguiStub.Constants.SameLine))"
+    )
+)
 function TestInlineButtonBlob:testRendersAllWidgetsInOrderWithProperNewlines()
     local someText = "Here it is"
     local someOtherText = "And here too"
@@ -64,7 +76,8 @@ function TestInlineButtonBlob:testAtcStringIsRenderedCorrectly()
         {"AAAA", {}}
     }
 
-    vhfHelperStub.frequencies.tunedIn = "119.400"
+    vhfHelperStub.frequencies.tunedInCom1 = "119.400"
+    vhfHelperStub.frequencies.tunedInCom2 = "nil"
     vhfHelperStub.frequencies.entered = "134.670"
 
     local atcBlob = AtcStringInlineButtonBlob:new()
@@ -77,39 +90,38 @@ function TestInlineButtonBlob:testAtcStringIsRenderedCorrectly()
     local i = 0
     local sameLineTooEarlyIndex = 0
 
-    if false then
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "EEEE: ")
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "ATIS=")
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SmallButton, "122.800")
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, " ")
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "TWR=")
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.PushStyleColor)
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SmallButton, "119.400")
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.PopStyleColor)
-        sameLineTooEarlyIndex = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "      ")
-        luaUnit.assertIsTrue(sameLineTooEarlyIndex > i)
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "APP=")
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.PushStyleColor)
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SmallButton, "134.670")
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.PopStyleColor)
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, " ")
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "OBS=")
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "199.998")
-        sameLineTooEarlyIndex = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
-        luaUnit.assertIsNil(sameLineTooEarlyIndex)
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "AAAA:")
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
-        i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "-")
-    end
+    TRACK_ISSUE("Tech Debt", "Fix blob and/or test.")
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "EEEE: ")
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "ATIS=")
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SmallButton, "122.800")
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, " ")
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "TWR=")
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.PushStyleColor)
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SmallButton, "119.400")
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.PopStyleColor)
+    -- sameLineTooEarlyIndex = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "      ")
+    -- luaUnit.assertIsTrue(sameLineTooEarlyIndex > i)
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "APP=")
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.PushStyleColor)
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SmallButton, "134.670")
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.PopStyleColor)
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, " ")
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "OBS=")
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "199.998")
+    -- -- sameLineTooEarlyIndex = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    -- -- luaUnit.assertIsNil(sameLineTooEarlyIndex)
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "AAAA:")
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
+    -- i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "-")
 end

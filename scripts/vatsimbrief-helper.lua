@@ -2059,8 +2059,26 @@ function onVHFHelperFrequencyChanged()
   SelectedAtcFrequenciesChangedTimestamp = os.clock()
 end
 
+local radioHelperOutdatedMessageShownAlready = false
+
+TRACK_ISSUE("Tech Debt", "Make user aware (not only in Log.txt) of VR Radio Helper not being up-to-date.")
 local function isRadioHelperInstalled()
-  return VHFHelperPublicInterface ~= nil
+  if (VHFHelperPublicInterface ~= nil) then
+    if (VHFHelperPublicInterface.getInterfaceVersion() == 1) then
+      return true
+    else
+      if (not radioHelperOutdatedMessageShownAlready) then
+        logMsg(
+          ("VR Radio Helper is installed, but uses an unsupported interface version=%d"):format(
+            tostring(VHFHelperPublicInterface.getInterfaceVersion())
+          )
+        )
+        radioHelperOutdatedMessageShownAlready = true
+      end
+    end
+  end
+
+  return false
 end
 
 --
