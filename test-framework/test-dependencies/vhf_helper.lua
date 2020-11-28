@@ -1,7 +1,6 @@
 local vhfHelperStub = {
 	frequencies = {
-		tunedInCom1 = nil,
-		tunedInCom2 = nil,
+		tunedIn = nil,
 		entered = nil
 	},
 	validator = function(freq)
@@ -24,10 +23,7 @@ VHFHelperPublicInterface = {
 		return nil
 	end,
 	isCurrentlyTunedIn = function(fullFrequencyString)
-		if
-			(fullFrequencyString == vhfHelperStub.frequencies.tunedInCom1 or
-				fullFrequencyString == vhfHelperStub.frequencies.tunedInCom2)
-		 then
+		if (fullFrequencyString == vhfHelperStub.frequencies.tunedIn) then
 			return true
 		end
 		return false

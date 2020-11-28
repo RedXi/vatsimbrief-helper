@@ -18,19 +18,19 @@ Perks:
 Required (Coding + Testing):
 * Vanilla Windows 10
 * Visual Studio Code: https://code.visualstudio.com/
-* Install VS Code extensions:
+* VS Code extensions:
   * vscode-lua (linting): https://marketplace.visualstudio.com/items?itemName=trixnz.vscode-lua
-* Install Lua: https://github.com/rjpcomputing/luaforwindows
+* Lua: https://github.com/rjpcomputing/luaforwindows
 * Download the A320 NORMAL CHECKLIST repository and open the workspace in VS Code!
 * Run default build task via **CTRL+SHIFT+B** once and update local paths in:
   * `<repository root>/LOCAL_ENVIRONMENT_CONFIGURATION.cmd`
 
 Optional:
 * git: https://git-scm.com/ (Versioning)
-* Install 7zip: https://www.7-zip.org/ (ZIP release package)
-* Install NSIS: https://nsis.sourceforge.io/ (EXE release installer)
-* Install Packetsender: https://packetsender.com/ (X-Plane remote command interface)
-* Install VS Code extensions:
+* 7zip: https://www.7-zip.org/ (ZIP release package)
+* NSIS: https://nsis.sourceforge.io/ (EXE release installer)
+* Packetsender: https://packetsender.com/ (X-Plane remote command interface)
+* VS Code extensions:
   * Code Runner (lets you run selected snippets of code): https://marketplace.visualstudio.com/items?itemName=formulahendry.code-runner
   * NSIS (linting): https://marketplace.visualstudio.com/items?itemName=idleberg.nsis
 * Update local paths and plugin name in:
@@ -51,6 +51,8 @@ After spending a few hours with LUA, it appears LUA looks like Turbo Pascal and 
 * Write more inter-module tests than you're used to, because you can easily nil-disconnect two (mentally) coupled components. Coupling is not a bad thing, especially when it is intentional.
 * Everything is global by default (yes, even things defined in anonymous functions inside a function that sits in a table), polluting your namespace. Dependency Hell Yeah! Feels like writing Assembly that is supposed to run in a JRE.
 * { Can you read this question? } then Better write this instead! end
+* From the official documentation: "_Lua has no integer type, as it does not need it._". One famous last quote of a software engineer, before he starts writing either a non-trival search engine or anything related to geometric algebra (games anyone?). Floating point numbers are not magical, their nature is naturally well-defined and leaves many minds in nearly religious disbelief. At least newer versions can be compiled with integer support.
+* Running `self.variable = nil print(self.variable)` can, under certain circumstances (broken pattern matching somewhere else in the code), output something that is **not** `nil`. Tested with Lua 5.1 and Lua 5.4. You have been warned.
 
 Nonetheless:
 * It doesn't immediately shoo away both people who developed software before and those who didn't.

@@ -1,4 +1,11 @@
+IS_TEST = "yes"
 local issueTracker = require("issue_tracker")
+require("lua_platform")
+TRACK_ISSUE(
+    "Lua",
+    "Switching from Lua 5.1 to 5.4 broke compatibility with LuaUnit and almost any table.insert call. Also, loadstring does not longer exist.",
+    "Redefine basic language features according to current interpreter version."
+)
 
 local luaUnitOutput = require("luaunit_output")
 local luaUnit = require("luaunit")

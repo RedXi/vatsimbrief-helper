@@ -257,7 +257,7 @@ do
             )
         else
             self:_log(
-                ("\nFound %d unique (%d total collected) issues in code that ran during tests, %d withhout a workaround."):format(
+                ("\nFound %d unique (%d total collected) issues in code that ran during tests, [93m%d without a workaround[0m."):format(
                     numUnique,
                     num,
                     numUnique - numWorkedAround

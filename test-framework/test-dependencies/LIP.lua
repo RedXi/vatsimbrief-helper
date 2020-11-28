@@ -27,8 +27,9 @@ local LuaIniParserStub = {
 	fileContent = {}
 }
 
-function LuaIniParserStub:setFileContentBeforeLoad(value)
-	LuaIniParserStub.fileContent = value
+function LuaIniParserStub.setFileContentBeforeLoad(newFileContent)
+	luaUnit.assertNotNil(newFileContent)
+	LuaIniParserStub.fileContent = newFileContent
 end
 
 function LuaIniParserStub.load(fileName)
@@ -36,6 +37,13 @@ function LuaIniParserStub.load(fileName)
 end
 
 function LuaIniParserStub.save(fileName, data)
+	LuaIniParserStub.fileContent = data
 end
+
+function LuaIniParserStub.reset()
+	LuaIniParserStub.fileContent = {}
+end
+
+LuaIniParserStub.isStub = true
 
 return LuaIniParserStub

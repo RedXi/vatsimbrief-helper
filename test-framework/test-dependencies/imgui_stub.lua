@@ -22,11 +22,19 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
---]] luaUnit =
-    require("luaUnit")
+--]]
+luaUnit = require("luaUnit")
+
+-- imgui.constant.StyleVar.FrameRounding
 
 imgui = {
-    constant = {StyleVar = {ItemSpacing}, Col = {Text, Button}},
+    constant = {
+        StyleVar = {
+            ItemSpacing = "ItemSpacing",
+            FrameRounding = "FrameRounding"
+        },
+        Col = {Text = "Text", Button = "Button"}
+    },
     Constants = {
         Button = "Button",
         SmallButton = "SmallButton",
@@ -53,6 +61,11 @@ imgui = {
         table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.InputText, description = title})
     end,
     SetWindowFontScale = function(value)
+    end,
+    PushStyleVar = function(value, value2)
+        luaUnit.assertNotNil(value)
+        luaUnit.assertNotNil(value2)
+        imgui.styleVarStackSize = imgui.styleVarStackSize + 1
     end,
     PushStyleVar_2 = function(value, value2, value3)
         luaUnit.assertNotNil(value2)
