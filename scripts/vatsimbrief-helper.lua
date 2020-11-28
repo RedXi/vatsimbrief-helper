@@ -1500,17 +1500,11 @@ do
     if (self.triesSoFar > self.Constants.maxTries) then
       logMsg(
         ("Vatsimbrief Helper: Lazy initialization is taking too long, giving up after %d tries."):format(
-          self.triesSoFar
+          self.triesSoFar - 1
         )
       )
       self.gaveUpAlready = true
       return
-    end
-
-    if (self.triesSoFar > 0 and self.triesSoFar % 10 == 0) then
-      logMsg(
-        ("Vatsimbrief Helper: Lazy initialization is taking very long, tried %d times already."):format(self.triesSoFar)
-      )
     end
 
     if (not self:_canInitializeNow()) then
