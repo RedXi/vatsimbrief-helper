@@ -7,14 +7,7 @@ TRACK_ISSUE(
     "Tech Debt",
     "This is a separate component already in VR Radio Helper. Move it to script_modules and remove it from main script. Makes updating and testing easier."
 )
-TRACK_ISSUE(
-    "Tech Debt",
-    MULTILINE_TEXT(
-        "Improve testing the blob with an iterator",
-        'assertTrue(imguiStub.nextElement(imguiStub.Constants.TextUnformatted, "199.998"))',
-        "assertTrue(imguiStub.nextElement(imguiStub.Constants.SameLine))"
-    )
-)
+
 function TestInlineButtonBlob:testRendersAllWidgetsInOrderWithProperNewlines()
     local someText = "Here it is"
     local someOtherText = "And here too"
@@ -90,6 +83,14 @@ function TestInlineButtonBlob:testAtcStringIsRenderedCorrectly()
     local i = 0
     local sameLineTooEarlyIndex = 0
 
+    TRACK_ISSUE(
+        "Tech Debt",
+        MULTILINE_TEXT(
+            "Improve testing the blob with an iterator",
+            'assertTrue(imguiStub.nextElement(imguiStub.Constants.TextUnformatted, "199.998"))',
+            "assertTrue(imguiStub.nextElement(imguiStub.Constants.SameLine))"
+        )
+    )
     i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "EEEE: ")
     i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
     i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "ATIS=")
@@ -119,8 +120,8 @@ function TestInlineButtonBlob:testAtcStringIsRenderedCorrectly()
     i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
     i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "199.998")
     sameLineTooEarlyIndex = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
-    luaUnit.assertIsTrue(sameLineTooEarlyIndex > i)
     i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "AAAA: ")
+    luaUnit.assertIsTrue(sameLineTooEarlyIndex > i)
     i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
     i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "-")
 end
