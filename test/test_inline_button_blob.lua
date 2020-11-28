@@ -90,7 +90,6 @@ function TestInlineButtonBlob:testAtcStringIsRenderedCorrectly()
     local i = 0
     local sameLineTooEarlyIndex = 0
 
-    imguiStub:debugPrintCommandList()
     i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "EEEE: ")
     i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
     i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, "ATIS=")
