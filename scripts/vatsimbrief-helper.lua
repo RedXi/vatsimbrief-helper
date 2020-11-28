@@ -36,6 +36,13 @@ TRACK_ISSUE = TRACK_ISSUE or function(component, description, workaround)
 MULTILINE_TEXT = MULTILINE_TEXT or function(...)
   end
 
+TRIGGER_ISSUE_AFTER_TIME = TRIGGER_ISSUE_AFTER_TIME or function(trackingSince, triggerAfterHowLong)
+  end
+
+local function daysToSeconds(days)
+  return days * 24 * 60 * 60
+end
+
 local function stringIsEmpty(s)
   return s == nil or s == emptyString
 end
@@ -1964,13 +1971,23 @@ do
     InlineButtonImguiBlob.addTextWithoutNewline(self, nextTextSubstring)
   end
 
-  function AtcStringInlineButtonBlob:build(stations, isRadioHelperInstalled, maxWidth)
+  TRACK_ISSUE(
+    "Tech Debt",
+    "Remove support for old VR Radio Helper interface version right before New Year's.",
+    TRIGGER_ISSUE_AFTER_TIME(1606585539, daysToSeconds(30))
+  )
+
+  function AtcStringInlineButtonBlob:build(stations, isRadioHelperPanelActive, maxWidth)
     self:setDefaultButtonCallbackFunction(
       function(buttonText)
         logMsg("Selected frequency in ATC window: " .. buttonText)
-        VHFHelperPublicInterface.enterFrequencyProgrammaticallyAsString(
-          self:_getFullFrequencyStringForRadioHelperInterfaceVersion1(buttonText)
-        )
+        if (VHFHelperPublicInterface.getInterfaceVersion() == 2) then
+          VHFHelperPublicInterface.enterFrequencyProgrammaticallyAsString(buttonText)
+        else
+          VHFHelperPublicInterface.enterFrequencyProgrammaticallyAsString(
+            self:_getFullFrequencyStringForRadioHelperInterfaceVersion1(buttonText)
+          )
+        end
       end
     )
 
@@ -2035,7 +2052,7 @@ do
         end
         lineHasPayload = true -- I.e. now we we'll add some. Don't forget to notice that.
         self:addTextWithoutNewline(stationOfAirportName .. "=")
-        if isRadioHelperInstalled then
+        if isRadioHelperPanelActive then
           TRACK_ISSUE(
             "Imgui",
             "The ImGUI LUA binding in FlyWithLua does not include GetStyle.",
@@ -2046,8 +2063,17 @@ do
           local colorA320COMOrange = 0xFF00AAFF
           local colorA320COMGreen = 0xFF00AA00
 
-          local fullFreqString = self:_getFullFrequencyStringForRadioHelperInterfaceVersion1(stationOfAirportFrequency)
-          if (VHFHelperPublicInterface.isValidFrequency(fullFreqString)) then
+          local isValidFrequency = nil
+          if (VHFHelperPublicInterface.getInterfaceVersion() == 2) then
+            isValidFrequency = VHFHelperPublicInterface.isValidFrequency(stationOfAirportFrequency)
+          else
+            isValidFrequency =
+              VHFHelperPublicInterface.isValidFrequency(
+              self:_getFullFrequencyStringForRadioHelperInterfaceVersion1(stationOfAirportFrequency)
+            )
+          end
+
+          if (isValidFrequency) then
             if (VHFHelperPublicInterface.isCurrentlyEntered(stationOfAirportFrequency)) then
               self:addCustomColorDefaultButton(
                 stationOfAirportFrequency,
@@ -2080,10 +2106,13 @@ end
 
 local radioHelperOutdatedMessageShownAlready = false
 
-TRACK_ISSUE("Tech Debt", "Make user aware (not only in Log.txt) of VR Radio Helper not being up-to-date.")
-local function isRadioHelperInstalled()
+TRACK_ISSUE(
+  "Tech Debt",
+  "Unsupported VR Radio Helper interface version: Make user aware (not only in Log.txt) of VR Radio Helper / Vatsimbrief Helper not being up-to-date."
+)
+local function isRadioHelperPanelActive()
   if (VHFHelperPublicInterface ~= nil) then
-    if (VHFHelperPublicInterface.getInterfaceVersion() == 1) then
+    if (VHFHelperPublicInterface.getInterfaceVersion() == 1 or VHFHelperPublicInterface.getInterfaceVersion() == 2) then
       return true
     else
       if (not radioHelperOutdatedMessageShownAlready) then
@@ -2231,7 +2260,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
   local selectedAtcFrequenciesChanged =
     LastSelectedAtcFrequenciesChangedTimestamp == nil or
     SelectedAtcFrequenciesChangedTimestamp ~= LastSelectedAtcFrequenciesChangedTimestamp
-  local radioHelperInstalledStateChanged = LastRadioHelperInstalledState ~= isRadioHelperInstalled()
+  local radioHelperInstalledStateChanged = LastRadioHelperInstalledState ~= isRadioHelperPanelActive()
   local renderContent =
     flightplanChanged or atcIdentifiersUpdated or flightplanFetchStatusChanged or vatsimDataFetchStatusChanged or
     not AtcWindowHasRenderedContent or
@@ -2346,7 +2375,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
 
           -- Build interactive version if Radio Helper is installed
           AtcWindow.StationsSelection = AtcStringInlineButtonBlob:new()
-          AtcWindow.StationsSelection:build(AtcWindow.Stations, isRadioHelperInstalled(), AtcWindow.WidthInCharacters)
+          AtcWindow.StationsSelection:build(AtcWindow.Stations, isRadioHelperPanelActive(), AtcWindow.WidthInCharacters)
         end
       end
     end
@@ -2359,7 +2388,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     AtcWindow.AtcWindowLastRenderedFlightplanId = FlightplanId
     AtcWindowLastAtcIdentifiersUpdatedTimestamp = VatsimData.AtcIdentifiersUpdatedTimestamp
     LastSelectedAtcFrequenciesChangedTimestamp = SelectedAtcFrequenciesChangedTimestamp
-    LastRadioHelperInstalledState = isRadioHelperInstalled()
+    LastRadioHelperInstalledState = isRadioHelperPanelActive()
     AtcWindowHasRenderedContent = true
   end
 
