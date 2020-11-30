@@ -433,7 +433,11 @@ function XPLMFindDataRef(datarefName)
         return nil
     end
 
-    TRACK_ISSUE("FlyWithLua", "deleting a dataref")
+    TRACK_ISSUE(
+        "FlyWithLua",
+        "deleting a dataref",
+        "In tests, it works because the environment is reset completely. Accept FlyWithLua/X-Plane flaw for now."
+    )
     if (not d.isInternallyDefinedDataref) then
         logMsg(
             ("FlyWithLua Stub: Looked for dataref name=%s that is NOT created via createSharedDatarefHandle. That means you're very likely working around an X-Plane/FlyWithLua issue."):format(

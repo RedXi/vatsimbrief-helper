@@ -30,8 +30,8 @@ if not exist script_modules\%RELEASE_FILE_NAME_PREFIX% (
     mkdir script_modules\%RELEASE_FILE_NAME_PREFIX%
 )
 
-echo %TAG% > script_modules\%RELEASE_FILE_NAME_PREFIX%\release_tag.txt
-echo %COMMIT_HASH% > script_modules\%RELEASE_FILE_NAME_PREFIX%\release_commit_hash.txt
+echo %TAG%> script_modules\%RELEASE_FILE_NAME_PREFIX%\release_tag.txt
+echo %COMMIT_HASH%> script_modules\%RELEASE_FILE_NAME_PREFIX%\release_commit_hash.txt
 
 %NSIS_EXECUTABLE% "/XOutFile ..\%RELEASE_PACKAGE_FOLDER_PATH%\%RELEASE_FILE_NAME_PREFIX%-%TAG%-%COMMIT_HASH%.exe" build\generate-installer.nsi
 if %ERRORLEVEL% NEQ 0 (
