@@ -27,6 +27,12 @@ do
       CurrentFetchStatus = VatsimDataContainer.FetchStatus.NO_DOWNLOAD_ATTEMPTED
     }
 
+    TRACK_ISSUE(
+      "Tech Debt",
+      "MapAtcIdentifiersToAtcInfo never mapped identifiers to ATC info. It was an auto-index-key table. Leave it like that for now.",
+      TRIGGER_ISSUE_IF(loadstring("newInstanceWithState.MapAtcIdentifiersToAtcInfo") == nil)
+    )
+
     setmetatable(newInstanceWithState, self)
     self.__index = self
     return newInstanceWithState
@@ -60,6 +66,14 @@ do
     local linesWithoutReadableName = 0
     local linesWithoutLocation = 0
     local linesAtc = 0
+    TRACK_ISSUE(
+      "Vatsim Data",
+      MULTILINE_TEXT(
+        "ATC lines can contain no readable name or an unknown location. That's fine and will be handled gracefully.",
+        "If duplicate stations AND frequencies are found, nothing should break, but it also doesn't make much sense."
+      ),
+      "Add potential duplicates and behave normally."
+    )
     for _, line in ipairs(lines) do
       -- Example line: VVTS_GND:1377201:HyeonSeok Lee:ATC:121.900:10.82056:106.66083:0:0::::::SINGAPORE:100:2:0:3:20::::::::::::0:0:0:0:Tan Son Nhat Ground^Â§Charts are available at www.vclvacc.net/download/charts/^Â§PDC availavle via private message.:20201129121118:20201129121118:0:0:0:
       -- Example line: SBWJ_APP:1030489:hamilton junior:ATC:119.000:-23.37825:-46.84175:0:0::::::SINGAPORE:100:4:0:5:159::::::::::::0:0:0:0:ATIS B 2200Z   ^Â§SBRJ VMC QNH 1007 DEP/ARR RWY 20LRNAV D/E^Â§SBGL VMC QNH 1008  DEP/ARR RWY 10 ILS X:20201002211135:20201002211135:0:0:0:
@@ -123,24 +137,25 @@ do
     )
   end
 
+  TRACK_ISSUE(
+    "Vatsim Data",
+    "To actually get a meaningful station name, use the closest station and not an arbitrary duplicate around the planet.",
+    "Add datarefs to read current latitude and longitude and sort duplicate frequencies in Vatsim data."
+  )
   function VatsimDataContainer:_sortStationsForFrequencyByCurrentDistance()
     local lat = CurrentLatitudeReadDataref
     local lon = CurrentLongitudeReadDataref
-    local compareFunction = function(atcInfo1, atcInfo2)
-      -- Handle unknown location like infinity
-      if (atcInfo1.latitude == nil and atcInfo2.latitude == nil) then
-        return false
-      elseif (atcInfo2.longitude == nil) then
-        return true
-      elseif (atcInfo1.latitude == nil) then
-        return false
-      end
 
-      local d1 = Globals.computeDistanceOnEarth({lat, lon}, {atcInfo1.latitude, atcInfo1.longitude})
-      local d2 = Globals.computeDistanceOnEarth({lat, lon}, {atcInfo2.latitude, atcInfo2.longitude})
-      -- logMsg("d" .. atcInfo1.id .. "=" .. tostring(d1))
-      -- logMsg("d" .. atcInfo2.id .. "=" .. tostring(d2))
-      return d1 < d2
+    for _, atcInfo in ipairs(self.MapAtcIdentifiersToAtcInfo) do
+      if (atcInfo.latitude == nil) then
+        atcInfo.currentDistance = math.huge
+      else
+        atcInfo.currentDistance = Globals.computeDistanceOnEarth({lat, lon}, {atcInfo.latitude, atcInfo.longitude})
+      end
+    end
+
+    local compareFunction = function(atcInfo1, atcInfo2)
+      return atcInfo1.currentDistance < atcInfo2.currentDistance
     end
 
     for frequency, atcInfos in pairs(self.MapAtcFrequenciesToAtcInfos) do

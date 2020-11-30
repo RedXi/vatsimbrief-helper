@@ -20,13 +20,14 @@ function TestVatsimDataContainer:getFreshTestVatsimDataContainer()
     newContainer:processSuccessfulHttpResponse(dummyHttpRequest)
     local afterTime = os.clock()
     local t_diff = afterTime - beforeTime
+    local MaxDiff = 1.0 / 30.0
     TRACK_ISSUE(
         "Optimization",
         MULTILINE_TEXT(
-            ("Processing new Vatsim data takes too long t_diff=%f"):format(t_diff),
+            ("Processing new Vatsim data takes too long t_diff=%f > MaxDiff=%f"):format(t_diff, MaxDiff),
             "It runs asynchronously anyway, but something is probably wrong if it takes that long."
         ),
-        TRIGGER_ISSUE_IF(t_diff > 0.2)
+        TRIGGER_ISSUE_IF(t_diff > MaxDiff)
     )
 
     return newContainer
