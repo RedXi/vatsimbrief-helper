@@ -355,6 +355,13 @@ TRIGGER_ISSUE_AFTER_TIME =
         )
     end
 
+TRIGGER_ISSUE_IF = TRIGGER_ISSUE_IF or function(conditition)
+        if (conditition) then
+            return nil
+        end
+        return ("This is not an issue currently. Conditions are met. Relax.")
+    end
+
 MULTILINE_TEXT = function(...)
     local completeString = ""
     for _, argument in ipairs(arg) do

@@ -5,8 +5,7 @@ TestInitialization = {}
 
 function TestInitialization:setUp()
     VHFHelperEventBus = nil
-    flyWithLuaStub:reset()
-    vatsimbriefHelper = dofile("scripts/vatsimbrief-helper.lua")
+    TestHighLevel:createDatarefsAndBootstrapVatsimbriefHelper()
 end
 
 function TestInitialization:testLazyInitializationIsGivingUpEventually()

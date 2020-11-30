@@ -1,19 +1,42 @@
-TestTemporaryBootstrap = {}
+TestHighLevel = {
+    Constants = {
+        SkrgPos = {6.1708, -75.4276}
+    }
+}
 
-LuaIniParserStub = require("LIP")
+function TestHighLevel:createDatarefsAndBootstrapVatsimbriefHelper()
+    flyWithLuaStub:reset()
+    flyWithLuaStub:createSharedDatarefHandle(
+        "sim/flightmodel/position/latitude",
+        flyWithLuaStub.Constants.DatarefTypeFloat,
+        self.Constants.SkrgPos[1]
+    )
+    flyWithLuaStub:createSharedDatarefHandle(
+        "sim/flightmodel/position/longitude",
+        flyWithLuaStub.Constants.DatarefTypeFloat,
+        self.Constants.SkrgPos[2]
+    )
+    dofile("scripts/vatsimbrief-helper.lua")
+end
 
-function TestTemporaryBootstrap:_busyWait(seconds)
+function TestHighLevel:_busyWait(seconds)
     local t0 = os.clock()
     while os.clock() - t0 < seconds do
     end
 end
 
-function TestTemporaryBootstrap:testRunVatsimbriefHelper()
+function TestHighLevel:testRunVatsimbriefHelper()
+    local invalidUsername = "<<<INVALID_SIMBRIEF_USERNAME>>>"
+    local username = invalidUsername or nil
+    local ENABLED = false
+    if (not ENABLED) then
+        return
+    end
+
     flyWithLuaStub:reset()
     local iniContent = {}
     iniContent.simbrief = {}
-    local invalidUsername = "<<<SIMBRIEF USERNAME HERE>>>"
-    iniContent.simbrief.username = invalidUsername
+    iniContent.simbrief.username = username
     luaUnit.assertNotEquals(iniContent.simbrief.username, invalidUsername)
     iniContent.flightplan = {}
     iniContent.flightplan.deleteDownloadedFlightPlans = "yes"
@@ -22,14 +45,15 @@ function TestTemporaryBootstrap:testRunVatsimbriefHelper()
 
     local dummyIniFilePath = SCRIPT_DIRECTORY .. "vatsimbrief-helper.ini"
     local iniFile = io.open(dummyIniFilePath, "w+b")
+    iniFile:write("Thats a dummy file, never read from and never written to.")
     iniFile:close()
 
-    LuaIniParserStub:setFileContentBeforeLoad(iniContent)
+    LuaIniParserStub.setFileContentBeforeLoad(iniContent)
 
     local vatsimbriefHelper = dofile("scripts/vatsimbrief-helper.lua")
     flyWithLuaStub:bootstrapAllMacros()
 
-    os.execute('start "" ' .. SCRIPT_DIRECTORY)
+    -- os.execute('start "" ' .. SCRIPT_DIRECTORY)
 
     local lastDoOftenTime = 0
     local lastDoSometimesTime = 0

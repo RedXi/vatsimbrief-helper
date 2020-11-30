@@ -1,69 +1,10 @@
-imguiStub = require("imgui_stub")
-vhfHelperStub = require("vhf_helper")
+local imguiStub = require("imgui_stub")
+local vhfHelperStub = require("vhf_helper")
+local AtcStringInlineButtonBlob = require("vatsimbrief-helper.atc_inline_button_blob")
 
-TestInlineButtonBlob = {}
+TestAtcButtonBlob = {}
 
-TRACK_ISSUE(
-    "Tech Debt",
-    "This is a separate component already in VR Radio Helper. Move it to script_modules and remove it from main script. Makes updating and testing easier."
-)
-
-function TestInlineButtonBlob:testRendersAllWidgetsInOrderWithProperNewlines()
-    local someText = "Here it is"
-    local someOtherText = "And here too"
-    local buttonTitle = "Press this"
-    local buttonTitle2 = "Press!"
-    local seriousText = "Saw Log Without Paws"
-
-    local blob = InlineButtonImguiBlob:new()
-    blob:addTextWithoutNewline(someText)
-    blob:addNewline()
-    blob:addNewline()
-    blob:addTextWithoutNewline(someOtherText)
-    blob:addNewline()
-    blob:addDefaultButton(buttonTitle)
-    blob:addTextWithoutNewline(seriousText)
-    blob:addDefaultButton(buttonTitle2)
-
-    imguiStub:startFrame()
-    blob:renderToCanvas()
-    imguiStub:endFrame()
-
-    local i = 0
-    local sameLineTooEarlyIndex = 0
-
-    sameLineTooEarlyIndex = imguiStub:findCommandInList(i + 1, imguiStub.Constants.SameLine)
-
-    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, someText)
-    luaUnit.assertIsTrue(sameLineTooEarlyIndex > i)
-    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, someOtherText)
-    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SmallButton, buttonTitle)
-    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
-    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.TextUnformatted, seriousText)
-    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SameLine)
-    i = imguiStub:findNextMatch(i + 1, imguiStub.Constants.SmallButton, buttonTitle2)
-end
-
-function TestInlineButtonBlob:testDefaultCallbackIsCalled()
-    local blob = InlineButtonImguiBlob:new()
-
-    local called = false
-    blob:setDefaultButtonCallbackFunction(
-        function(buttonTitle)
-            called = true
-        end
-    )
-    local buttonTitle = "bla"
-    blob:addDefaultButton(buttonTitle)
-
-    imguiStub:pressButtonProgrammaticallyOnce(buttonTitle)
-    imguiStub:startFrame()
-    blob:renderToCanvas()
-    imguiStub:endFrame()
-    luaUnit.assertIsTrue(called)
-end
-
-function TestInlineButtonBlob:testAtcStringIsRenderedCorrectly()
+function TestAtcButtonBlob:testAtcStringIsRenderedCorrectly()
     local fullAtcData = {
         {"EEEE", {{"ATIS", "122.800"}, {"TWR", "119.400"}, {"APP", "134.670"}, {"OBS", "199.998"}}},
         {"AAAA", {}}

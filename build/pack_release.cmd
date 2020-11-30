@@ -26,6 +26,13 @@ set DEFAULT_READABLE_SCRIPT_NAME_WITHOUT_QUOTES=%DEFAULT_READABLE_SCRIPT_NAME:"=
 if !RELEASE_FILE_NAME_PREFIX!==!DEFAULT_RELEASE_FILE_NAME_PREFIX_WITHOUT_QUOTES! goto :label_prompt_update_build_configuration
 if !READABLE_SCRIPT_NAME!==!DEFAULT_READABLE_SCRIPT_NAME_WITHOUT_QUOTES! goto :label_prompt_update_build_configuration
 
+if not exist script_modules\%RELEASE_FILE_NAME_PREFIX% (
+    mkdir script_modules\%RELEASE_FILE_NAME_PREFIX%
+)
+
+echo %TAG% > script_modules\%RELEASE_FILE_NAME_PREFIX%\release_tag.txt
+echo %COMMIT_HASH% > script_modules\%RELEASE_FILE_NAME_PREFIX%\release_commit_hash.txt
+
 %NSIS_EXECUTABLE% "/XOutFile ..\%RELEASE_PACKAGE_FOLDER_PATH%\%RELEASE_FILE_NAME_PREFIX%-%TAG%-%COMMIT_HASH%.exe" build\generate-installer.nsi
 if %ERRORLEVEL% NEQ 0 (
     echo [91mNSIS Installer generation failed[0m.

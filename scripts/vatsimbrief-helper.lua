@@ -28,27 +28,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --]]
-local emptyString = ""
+local Globals = require("vatsimbrief-helper.globals")
 
-TRACK_ISSUE = TRACK_ISSUE or function(component, description, workaround)
-  end
+TRACK_ISSUE("Tech Debt", "Move all the other global things to globals.lua")
 
-MULTILINE_TEXT = MULTILINE_TEXT or function(...)
-  end
-
-TRIGGER_ISSUE_AFTER_TIME = TRIGGER_ISSUE_AFTER_TIME or function(trackingSince, triggerAfterHowLong)
-  end
-
-local function daysToSeconds(days)
-  return days * 24 * 60 * 60
-end
-
-local function stringIsEmpty(s)
-  return s == nil or s == emptyString
-end
-local function stringIsNotEmpty(s)
-  return not stringIsEmpty(s)
-end
 local function numberIsNilOrZero(n)
   return n == nil or n == 0
 end
@@ -59,16 +42,16 @@ local function trim(s)
   return s:gsub("^%s*(.-)%s*$", "%1")
 end
 local function stringIsBlank(s)
-  return s == nil or s == emptyString or trim(s) == ""
+  return s == nil or s == Globals.emptyString or trim(s) == ""
 end
 local function stringEndsWith(s, e)
-  return stringIsEmpty(e) or s:sub(-(#e)) == e
+  return Globals.stringIsEmpty(e) or s:sub(-(#e)) == e
 end
 local function stringStripTrailingCharacters(s, n)
   return s:sub(1, #s - n)
 end
 local function defaultIfBlank(s, d)
-  if s == nil or stringIsEmpty(trim(s)) then
+  if s == nil or Globals.stringIsEmpty(trim(s)) then
     return d
   else
     return s
@@ -105,38 +88,8 @@ local function getExtensionOfFileName(s)
   end
 end
 
-local function splitStringBySeparator(str, separator)
-  -- I wonder why lua does not offer a simple function like this. Pretty annoying.
-  local result = {}
-  local c0 = 1 -- Offset of next chunk
-  while true do
-    i = str:find(separator, c0) -- Find "next" occurrence
-    if i == nil then
-      break
-    end
-    c1 = i - 1 -- Index of last char of next chunk
-    local chunk
-    if c1 > c0 then
-      chunk = str:sub(c0, c1)
-    else
-      chunk = ""
-    end
-    table.insert(result, chunk)
-    c0 = c0 + #chunk + #separator
-  end
-
-  -- Append string after last separator
-  if c0 <= #str then
-    chunk = str:sub(c0)
-  else
-    chunk = ""
-  end
-  table.insert(result, chunk)
-  return result
-end
-
 local function wrapStringAtMaxlengthWithPadding(str, maxLength, padding)
-  local items = splitStringBySeparator(str, " ")
+  local items = Globals.splitStringBySeparator(str, " ")
   local result = ""
   local lineLength = 0
   for i = 1, #items do
@@ -313,7 +266,10 @@ end
 --- Specific configuration getters/setters
 
 local function getConfiguredSimbriefUserName()
-  if Configuration.File.simbrief ~= nil and stringIsNotEmpty(Configuration.File.simbrief.username) then
+  if (Configuration.File.simbrief) then
+    logMsg(Configuration.File.simbrief.username)
+  end
+  if Configuration.File.simbrief ~= nil and Globals.stringIsNotEmpty(Configuration.File.simbrief.username) then
     return trim(Configuration.File.simbrief.username)
   else
     return ""
@@ -1199,11 +1155,11 @@ local function processNewFlightplan(httpRequest)
         FlightplanCallsign = SimbriefFlightplan.atc.callsign
 
         FlightplanRoute = SimbriefFlightplan.general.route
-        if stringIsEmpty(FlightplanRoute) then
+        if Globals.stringIsEmpty(FlightplanRoute) then
           FlightplanRoute = "(none)"
         end
         FlightplanAltRoute = SimbriefFlightplan.alternate.route
-        if stringIsEmpty(FlightplanAltRoute) then
+        if Globals.stringIsEmpty(FlightplanAltRoute) then
           FlightplanAltRoute = "(none)"
         end
 
@@ -1309,7 +1265,7 @@ local function refreshFlightplanNow()
   copas.addthread(
     function()
       CurrentSimbriefFlightplanFetchStatus = SimbriefFlightplanFetchStatus.DOWNLOADING
-      if stringIsNotEmpty(getConfiguredSimbriefUserName()) then
+      if Globals.stringIsNotEmpty(getConfiguredSimbriefUserName()) then
         local url = "http://www.simbrief.com/api/xml.fetcher.php?username=" .. getConfiguredSimbriefUserName()
         performDefaultHttpGetRequest(url, processNewFlightplan, processFlightplanDownloadFailure)
       else
@@ -1343,112 +1299,39 @@ local refreshFlightplanTimer =
 -- VATSIM data
 --
 
-local VatsimData = {
-  MapAtcIdentifiersToAtcInfo = {},
-  AtcIdentifiersUpdatedTimestamp = nil
-}
+local Datarefs = require("vatsimbrief-helper.datarefs")
+local VatsimDataContainer = require("vatsimbrief-helper.vatsim_data_container")
+local VatsimData = VatsimDataContainer:new()
 
-local VatsimDataFetchStatusLevel = {
-  INFO = 0,
-  SYSTEM_RELATED = 1
-}
-local VatsimDataFetchStatus = {
-  NO_DOWNLOAD_ATTEMPTED = {level = VatsimDataFetchStatusLevel.INFO},
-  DOWNLOADING = {level = VatsimDataFetchStatusLevel.INFO},
-  NO_ERROR = {level = VatsimDataFetchStatusLevel.INFO},
-  UNKNOWN_DOWNLOAD_ERROR = {level = VatsimDataFetchStatusLevel.SYSTEM_RELATED},
-  UNEXPECTED_HTTP_RESPONSE_STATUS = {level = VatsimDataFetchStatusLevel.SYSTEM_RELATED},
-  UNEXPECTED_HTTP_RESPONSE = {level = VatsimDataFetchStatusLevel.SYSTEM_RELATED},
-  NETWORK_ERROR = {level = VatsimDataFetchStatusLevel.SYSTEM_RELATED}
-}
-local CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.NO_DOWNLOAD_ATTEMPTED
-local function getVatsimDataFetchStatusMessageAndColor()
-  local msg
-  if CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.NO_DOWNLOAD_ATTEMPTED then
-    msg = "Download pending"
-  elseif CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.DOWNLOADING then
-    msg = "Downloading"
-  elseif CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.NO_ERROR then
-    msg = "No error"
-  elseif CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.UNKNOWN_DOWNLOAD_ERROR then
-    msg = "Unknown error while downloading"
-  elseif CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS then
-    msg = "Unexpected server response"
-  elseif CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE then
-    msg = "Unhandled server response"
-  elseif CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.NETWORK_ERROR then
-    msg = "Network error"
-  else
-    msg = "Unknown error '" .. (CurrentVatsimDataFetchStatus or "(none)") .. "'"
-  end
-  msg = "Could not download VATSIM data:\n" .. msg .. "."
-
-  local color
-  if CurrentVatsimDataFetchStatus.level == VatsimDataFetchStatusLevel.INFO then
-    color = colorNormal
-  elseif CurrentVatsimDataFetchStatus.level == VatsimDataFetchStatusLevel.SYSTEM_RELATED then
-    color = colorWarn
-  elseif CurrentVatsimDataFetchStatus.level == VatsimDataFetchStatusLevel.USER_RELATED then
-    color = colorA320Blue
-  else
-    color = colorNormal
-  end
-
-  return msg, color
+local function processSuccessfulVatsimDataRequest(httpRequest)
+  VatsimData:processSuccessfulHttpResponse(httpRequest)
 end
 
-local function processVatsimDataDownloadFailure(httpRequest)
-  if httpRequest.errorCode == HttpDownloadErrors.INTERNAL_SERVER_ERROR then
-    CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
-  elseif httpRequest.errorCode == HttpDownloadErrors.UNHANDLED_RESPONSE then
-    CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE
-  elseif httpRequest.errorCode == HttpDownloadErrors.NETWORK then
-    CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.NETWORK_ERROR
-  else
-    CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNKNOWN_DOWNLOAD_ERROR
-  end
+local function processFailedVatsimDataRequest(httpRequest)
+  VatsimData:processFailedHttpRequest(httpRequest)
 end
 
-local function processNewVatsimData(httpRequest)
-  if httpRequest.httpStatusCode ~= 200 then
-    CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
-  else
-    VatsimData.MapAtcIdentifiersToAtcInfo = {}
-    local lines = splitStringBySeparator(httpRequest.responseBody, "\n")
-    for _, line in ipairs(lines) do
-      -- Example line: SBWJ_APP:1030489:hamilton junior:ATC:119.000:-23.37825:-46.84175:0:0::::::SINGAPORE:100:4:0:5:159::::::::::::0:0:0:0:ATIS B 2200Z   ^Â§SBRJ VMC QNH 1007 DEP/ARR RWY 20LRNAV D/E^Â§SBGL VMC QNH 1008  DEP/ARR RWY 10 ILS X:20201002211135:20201002211135:0:0:0:
-
-      -- Filter ATC lines heuristically not to waste time for splitting the line into parts
-      if line:find(":ATC:") ~= nil then
-        local parts = splitStringBySeparator(line, ":")
-        if table.getn(parts) >= 5 and parts[4] == "ATC" then
-          table.insert(VatsimData.MapAtcIdentifiersToAtcInfo, {id = parts[1], frequency = parts[5]})
-        end
-      end
-    end
-
-    VatsimData.AtcIdentifiersUpdatedTimestamp = os.clock()
-
-    CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.NO_ERROR
-  end
-end
-
+TRACK_ISSUE(
+  "Tech Debt",
+  MULTILINE_TEXT(
+    "Right after starting to implement the public interface, the Lua 200 local variables limit was crossed.",
+    "For now, VatsimData is out of the main script. There are still some things missing that",
+    "rely on configuration, which is still in the main script. Move that as well."
+  )
+)
 local function refreshVatsimDataNow()
   if getConfiguredAtcWindowVisibilityDefaultTrue() then -- ATM, don't refresh when ATC window is not opened
     copas.addthread(
       function()
-        CurrentVatsimDataFetchStatus = VatsimDataFetchStatus.DOWNLOADING
+        VatsimDataContainer.CurrentFetchStatus = VatsimDataContainer.FetchStatus.DOWNLOADING
         local url = "http://data.vatsim.net/vatsim-data.txt"
-        performDefaultHttpGetRequest(url, processNewVatsimData, processVatsimDataDownloadFailure)
+        -- performDefaultHttpGetRequest(url, processSuccessfulHttpResponse, processVatsimDataDownloadFailure)
+        performDefaultHttpGetRequest(url, processSuccessfulVatsimDataRequest, processFailedVatsimDataRequest)
       end
     )
   else
     logMsg("ATC window is currently closed. No refresh of VATSIM data necessary.")
   end
-end
-
-local function clearAtcData()
-  VatsimData.AtcIdentifiersUpdatedTimestamp = nil
 end
 
 local refreshVatsimDataTimer =
@@ -1465,6 +1348,18 @@ local refreshVatsimDataTimer =
     end
   }
 )
+
+--
+-- Public Interface
+--
+VatsimbriefHelperPublicInterface = {
+  getInterfaceVersion = function()
+    return 1
+  end,
+  getAtcStationsForFrequencyClosestFirst = function(fullFrequencyString)
+    return VatsimData:getAtcStationsForFrequencyClosestFirst(fullFrequencyString)
+  end
+}
 
 --
 -- Initialization
@@ -1495,6 +1390,7 @@ do
 
   function LazyInitialization:_initializeNow()
     VHFHelperEventBus.on(VHFHelperEventOnFrequencyChanged, onVHFHelperFrequencyChanged)
+    Datarefs.bootstrap()
   end
 
   function LazyInitialization:tryVatsimbriefHelperInit()
@@ -1593,7 +1489,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
       FlightplanWindowFlightplanDownloadStatusColor = colorNormal
     end
 
-    if stringIsEmpty(FlightplanId) then
+    if Globals.stringIsEmpty(FlightplanId) then
       if CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.DOWNLOADING then
         FlightplanWindowShowDownloadingMsg = true
       else
@@ -1602,7 +1498,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
     else
       FlightplanWindowShowDownloadingMsg = false
 
-      if stringIsNotEmpty(FlightplanAltIcao) then
+      if Globals.stringIsNotEmpty(FlightplanAltIcao) then
         FlightplanWindowAirports = ("%s - %s / %s"):format(FlightplanOriginIcao, FlightplanDestIcao, FlightplanAltIcao)
       else
         FlightplanWindowAirports = ("%s - %s"):format(FlightplanOriginIcao, FlightplanDestIcao)
@@ -1625,7 +1521,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
       )
       FlightplanWindowRoute = createFlightplanTableEntry("Route", FlightplanWindowRoute)
 
-      if stringIsNotEmpty(FlightplanAltIcao) then
+      if Globals.stringIsNotEmpty(FlightplanAltIcao) then
         FlightplanWindowAltRoute =
           ("%s/%s %s %s/%s"):format(
           FlightplanDestIcao,
@@ -1656,7 +1552,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
       )
       FlightplanWindowSchedule = createFlightplanTableEntry("Schedule", FlightplanWindowSchedule)
 
-      if stringIsNotEmpty(FlightplanAltIcao) then
+      if Globals.stringIsNotEmpty(FlightplanAltIcao) then
         FlightplanWindowAltitudeAndTemp =
           ("ALT=%d/%d TEMP=%d°C"):format(FlightplanAltitude, FlightplanAltAltitude, FlightplanTocTemp)
       else
@@ -1690,7 +1586,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
       )
       FlightplanWindowWeights = createFlightplanTableEntry("Weights", FlightplanWindowWeights)
 
-      if stringIsNotEmpty(FlightplanAltIcao) then
+      if Globals.stringIsNotEmpty(FlightplanAltIcao) then
         FlightplanWindowTrack =
           ("DIST=%d/%d BLOCKTIME=%s CI=%d WINDDIR=%d WINDSPD=%d"):format(
           FlightplanDistance,
@@ -1718,7 +1614,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
         FlightplanWindow.FlightplanWindowValuePaddingLeft,
         FlightplanDestMetar
       )
-      if stringIsNotEmpty(FlightplanAltIcao) then
+      if Globals.stringIsNotEmpty(FlightplanAltIcao) then
         FlightplanWindowMetars =
           FlightplanWindowMetars ..
           ("\n%s%s"):format(FlightplanWindow.FlightplanWindowValuePaddingLeft, FlightplanAltMetar)
@@ -1734,7 +1630,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
   -- Paint
   imgui.SetWindowFontScale(FlightplanWindow.FontScale)
 
-  if stringIsNotEmpty(FlightplanWindowFlightplanDownloadStatus) then
+  if Globals.stringIsNotEmpty(FlightplanWindowFlightplanDownloadStatus) then
     imgui.PushStyleColor(imgui.constant.Col.Text, FlightplanWindowFlightplanDownloadStatusColor)
     imgui.TextUnformatted(FlightplanWindowFlightplanDownloadStatus)
     imgui.PopStyleColor()
@@ -1744,10 +1640,10 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
     imgui.PushStyleColor(imgui.constant.Col.Text, colorA320Blue)
     imgui.TextUnformatted("Downloading flight plan ...")
     imgui.PopStyleColor()
-  elseif stringIsNotEmpty(FlightplanId) then
+  elseif Globals.stringIsNotEmpty(FlightplanId) then
     imgui.TextUnformatted(FlightplanWindowAirports)
     imgui.TextUnformatted(FlightplanWindowRoute)
-    if stringIsNotEmpty(FlightplanWindowAltRoute) then
+    if Globals.stringIsNotEmpty(FlightplanWindowAltRoute) then
       imgui.TextUnformatted(FlightplanWindowAltRoute)
     end
     imgui.TextUnformatted(FlightplanWindowSchedule)
@@ -1814,291 +1710,8 @@ add_macro(
 --
 
 local SelectedAtcFrequenciesChangedTimestamp = nil
-local InlineButtonImguiBlobClass
-do
-  InlineButtonImguiBlob = {
-    Constants = {
-      TextWithoutNewlineCode = 0,
-      NewlineCode = 1,
-      DefaultButtonCode = 2,
-      CustomColorDefaultButtonCode = 3,
-      BlockCodeOffset = 0,
-      BlockSkipDistanceOffset = 1,
-      MinimumBlockSkipDistance = 2
-    }
-  }
-
-  function InlineButtonImguiBlob:new()
-    local newInstanceWithState = {
-      blobTable = {},
-      defaultButtonCallbackFunction = nil,
-      nextImguiButtonId = 15564
-    }
-
-    setmetatable(newInstanceWithState, self)
-    self.__index = self
-    return newInstanceWithState
-  end
-
-  function InlineButtonImguiBlob:_addDefaultBlockHeader(blockCode, additionalSkipDistance)
-    table.insert(self.blobTable, blockCode)
-    local skipDistance = self.Constants.MinimumBlockSkipDistance + additionalSkipDistance
-    table.insert(self.blobTable, skipDistance)
-  end
-
-  function InlineButtonImguiBlob:_addBasicButtonSubHeader(buttonTitleAsString)
-    table.insert(self.blobTable, buttonTitleAsString)
-
-    -- Having two buttons with the same text does not work well in ImGUI
-    table.insert(self.blobTable, buttonTitleAsString .. "##" .. tostring(self.nextImguiButtonId))
-    self.nextImguiButtonId = self.nextImguiButtonId + 1
-  end
-
-  function InlineButtonImguiBlob:setDefaultButtonCallbackFunction(value)
-    self.defaultButtonCallbackFunction = value
-  end
-
-  function InlineButtonImguiBlob:addTextWithoutNewline(textAsString)
-    self:_addDefaultBlockHeader(self.Constants.TextWithoutNewlineCode, 1)
-    table.insert(self.blobTable, textAsString or "<NIL text>")
-  end
-
-  function InlineButtonImguiBlob:addNewline()
-    self:_addDefaultBlockHeader(self.Constants.NewlineCode, 0)
-  end
-
-  function InlineButtonImguiBlob:addDefaultButton(buttonTitleAsString)
-    self:_addDefaultBlockHeader(self.Constants.DefaultButtonCode, 2)
-
-    self:_addBasicButtonSubHeader(buttonTitleAsString or "<NIL button title>")
-  end
-
-  function InlineButtonImguiBlob:addCustomColorDefaultButton(buttonTitleAsString, textColor, backgroundColor)
-    self:_addDefaultBlockHeader(self.Constants.CustomColorDefaultButtonCode, 4)
-
-    self:_addBasicButtonSubHeader(buttonTitleAsString)
-    table.insert(self.blobTable, textColor or "<NIL color>")
-    table.insert(self.blobTable, backgroundColor or "<NIL color>")
-  end
-
-  function InlineButtonImguiBlob:renderToCanvas()
-    -- ImGUI unfortunately adds newlines after widgets _by default_
-    local lastItemTriggeredANewline = true
-
-    imgui.PushStyleVar_2(imgui.constant.StyleVar.ItemSpacing, 0.0, 0.0)
-    imgui.PushStyleVar_2(imgui.constant.StyleVar.FramePadding, 0.0, 0.0)
-
-    local index = 1
-    while index < #self.blobTable do
-      local nextCode = self.blobTable[index + self.Constants.BlockCodeOffset]
-
-      if (nextCode == self.Constants.NewlineCode) then
-        lastItemTriggeredANewline = true
-      else
-        if (not lastItemTriggeredANewline) then
-          imgui.SameLine()
-        end
-
-        lastItemTriggeredANewline = false
-      end
-
-      if (nextCode == self.Constants.TextWithoutNewlineCode) then
-        imgui.TextUnformatted(self.blobTable[index + 2])
-      elseif (nextCode == self.Constants.DefaultButtonCode) then
-        if (imgui.SmallButton(self.blobTable[index + 3])) then
-          self.defaultButtonCallbackFunction(self.blobTable[index + 2])
-        end
-      elseif (nextCode == self.Constants.CustomColorDefaultButtonCode) then
-        imgui.PushStyleColor(imgui.constant.Col.Text, self.blobTable[index + 4])
-        imgui.PushStyleColor(imgui.constant.Col.Button, self.blobTable[index + 5])
-
-        if (imgui.SmallButton(self.blobTable[index + 3])) then
-          self.defaultButtonCallbackFunction(self.blobTable[index + 2])
-        end
-
-        imgui.PopStyleColor()
-        imgui.PopStyleColor()
-      end
-
-      local skipDistance = self.blobTable[index + self.Constants.BlockSkipDistanceOffset]
-      if (skipDistance <= 0) then
-        imgui.TextUnformatted("")
-        imgui.TextUnformatted("!BLOB corrupted, invalid skip distance!")
-      end
-
-      index = index + skipDistance
-    end
-
-    imgui.PopStyleVar()
-    imgui.PopStyleVar()
-  end
-end
-
-local AtcStringInlineButtonBlobClass
-do
-  AtcStringInlineButtonBlob = InlineButtonImguiBlob:new()
-
-  function AtcStringInlineButtonBlob:_getFullFrequencyStringForRadioHelperInterfaceVersion1(
-    possiblyShorterFrequencyString)
-    return possiblyShorterFrequencyString .. string.rep("0", 7 - string.len(possiblyShorterFrequencyString)) -- Append zeros for format XXX.XXX
-  end
-
-  function AtcStringInlineButtonBlob:_mathMinNilIsInfinite(firstNumberOrNil, secondNumber)
-    if (firstNumberOrNil ~= nil and firstNumberOrNil < secondNumber) then
-      return firstNumberOrNil
-    else
-      return secondNumber
-    end
-  end
-
-  -- Override
-  function AtcStringInlineButtonBlob:renderToCanvas()
-    imgui.PushStyleColor(imgui.constant.Col.ButtonActive, 0xFF000000)
-    imgui.PushStyleColor(imgui.constant.Col.ButtonHovered, 0xFF202020)
-
-    InlineButtonImguiBlob.renderToCanvas(self)
-
-    imgui.PopStyleColor()
-    imgui.PopStyleColor()
-  end
-
-  -- Override
-  function AtcStringInlineButtonBlob:addTextWithoutNewline(nextTextSubstring)
-    -- Convenience: Do NOT add nil or empty strings to blob
-    if (nextTextSubstring == nil or nextTextSubstring == emptyString) then
-      return
-    end
-    InlineButtonImguiBlob.addTextWithoutNewline(self, nextTextSubstring)
-  end
-
-  TRACK_ISSUE(
-    "Tech Debt",
-    "Remove support for old VR Radio Helper interface version right before New Year's.",
-    TRIGGER_ISSUE_AFTER_TIME(1606585539, daysToSeconds(30))
-  )
-
-  function AtcStringInlineButtonBlob:build(stations, isRadioHelperPanelActive, maxWidth)
-    self:setDefaultButtonCallbackFunction(
-      function(buttonText)
-        logMsg("Selected frequency in ATC window: " .. buttonText)
-        if (VHFHelperPublicInterface.getInterfaceVersion() == 2) then
-          VHFHelperPublicInterface.enterFrequencyProgrammaticallyAsString(buttonText)
-        else
-          VHFHelperPublicInterface.enterFrequencyProgrammaticallyAsString(
-            self:_getFullFrequencyStringForRadioHelperInterfaceVersion1(buttonText)
-          )
-        end
-      end
-    )
-
-    TRACK_ISSUE("Lua", "continue statement", "nested ifs")
-    TRACK_ISSUE("Lua", "labels", "nested ifs")
-
-    -- Do some calculations for correct alignment of output
-    local maxKeyLength = 0
-    for i = 1, #stations do
-      local airportIcao = stations[i][1]
-      if string.len(airportIcao) > maxKeyLength then
-        maxKeyLength = string.len(airportIcao)
-      end
-    end
-    local separatorBetweenLocationAndFrequencies = ": "
-    maxKeyLength = maxKeyLength + string.len(separatorBetweenLocationAndFrequencies)
-    local padding = string.rep(" ", maxKeyLength)
-    local maxValueLength = maxWidth - maxKeyLength
-
-    -- Build text only version of stations for the case no Radio Helper is installed
-    for i = 1, #stations do
-      local stationsEntryOfAirport = stations[i]
-      local airportIcao = stationsEntryOfAirport[1]
-      local stationsOfAirport = stationsEntryOfAirport[2]
-
-      if i > 1 then -- Otherwise, we're starting on the left already
-        self:addNewline()
-      end
-      local currentLineLength = 0
-      local lineHasPayload = false
-
-      self:addTextWithoutNewline(airportIcao .. separatorBetweenLocationAndFrequencies)
-      currentLineLength =
-        currentLineLength + string.len(airportIcao) + string.len(separatorBetweenLocationAndFrequencies)
-
-      if #stationsOfAirport == 0 then
-        self:addTextWithoutNewline("-")
-        currentLineLength = currentLineLength + 1
-      end
-      for j = 1, #stationsOfAirport do
-        local stationOfAirport = stationsOfAirport[j]
-        local stationOfAirportName = stationOfAirport[1]
-        local stationOfAirportFrequency = stationOfAirport[2]
-
-        local entryLength = 0
-        if lineHasPayload then
-          entryLength = entryLength + string.len(" ")
-        end
-        entryLength =
-          entryLength + string.len(stationOfAirportName) + string.len("=") + string.len(stationOfAirportFrequency)
-
-        if currentLineLength + entryLength > maxWidth then
-          self:addNewline()
-          self:addTextWithoutNewline(padding)
-          currentLineLength = string.len(padding)
-          lineHasPayload = false
-        end
-        currentLineLength = currentLineLength + entryLength
-
-        if lineHasPayload then
-          self:addTextWithoutNewline(" ")
-        end
-        lineHasPayload = true -- I.e. now we we'll add some. Don't forget to notice that.
-        self:addTextWithoutNewline(stationOfAirportName .. "=")
-        if isRadioHelperPanelActive then
-          TRACK_ISSUE(
-            "Imgui",
-            "The ImGUI LUA binding in FlyWithLua does not include GetStyle.",
-            "Define screen-picked colors manually."
-          )
-          local colorDefaultImguiBackground = 0xFF121110
-
-          local colorA320COMOrange = 0xFF00AAFF
-          local colorA320COMGreen = 0xFF00AA00
-
-          local isValidFrequency = nil
-          if (VHFHelperPublicInterface.getInterfaceVersion() == 2) then
-            isValidFrequency = VHFHelperPublicInterface.isValidFrequency(stationOfAirportFrequency)
-          else
-            isValidFrequency =
-              VHFHelperPublicInterface.isValidFrequency(
-              self:_getFullFrequencyStringForRadioHelperInterfaceVersion1(stationOfAirportFrequency)
-            )
-          end
-
-          if (isValidFrequency) then
-            if (VHFHelperPublicInterface.isCurrentlyEntered(stationOfAirportFrequency)) then
-              self:addCustomColorDefaultButton(
-                stationOfAirportFrequency,
-                colorA320COMGreen,
-                colorDefaultImguiBackground
-              )
-            elseif (VHFHelperPublicInterface.isCurrentlyTunedIn(stationOfAirportFrequency)) then
-              self:addCustomColorDefaultButton(
-                stationOfAirportFrequency,
-                colorA320COMOrange,
-                colorDefaultImguiBackground
-              )
-            else
-              self:addDefaultButton(stationOfAirportFrequency)
-            end
-          else
-            self:addTextWithoutNewline(stationOfAirportFrequency)
-          end
-        else
-          self:addTextWithoutNewline(stationOfAirportFrequency)
-        end
-      end
-    end
-  end
-end
+InlineButtonBlob = require("shared_components.inline_button_blob")
+AtcStringInlineButtonBlob = require("vatsimbrief-helper.atc_inline_button_blob")
 
 function onVHFHelperFrequencyChanged()
   SelectedAtcFrequenciesChangedTimestamp = os.clock()
@@ -2256,7 +1869,8 @@ function buildVatsimbriefHelperAtcWindowCanvas()
   local atcIdentifiersUpdated = AtcWindowLastAtcIdentifiersUpdatedTimestamp ~= VatsimData.AtcIdentifiersUpdatedTimestamp
   local flightplanFetchStatusChanged =
     AtcWindowLastRenderedSimbriefFlightplanFetchStatus ~= CurrentSimbriefFlightplanFetchStatus
-  local vatsimDataFetchStatusChanged = AtcWindowLastRenderedVatsimDataFetchStatus ~= CurrentVatsimDataFetchStatus
+  local vatsimDataFetchStatusChanged =
+    AtcWindowLastRenderedVatsimDataFetchStatus ~= VatsimDataContainer.CurrentFetchStatus
   local selectedAtcFrequenciesChanged =
     LastSelectedAtcFrequenciesChangedTimestamp == nil or
     SelectedAtcFrequenciesChangedTimestamp ~= LastSelectedAtcFrequenciesChangedTimestamp
@@ -2281,8 +1895,8 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     end
 
     -- Render download status of VATSIM data
-    statusType = CurrentVatsimDataFetchStatus.level
-    if statusType == VatsimDataFetchStatusLevel.SYSTEM_RELATED then
+    statusType = VatsimData.CurrentFetchStatus.level
+    if statusType == VatsimDataContainer.FetchStatusLevel.SYSTEM_RELATED then
       AtcWindowVatsimDataDownloadStatus, AtcWindowVatsimDataDownloadStatusColor =
         getVatsimDataFetchStatusMessageAndColor()
     else
@@ -2291,9 +1905,9 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     end
 
     -- Render route
-    if stringIsNotEmpty(FlightplanId) then
+    if Globals.stringIsNotEmpty(FlightplanId) then
       -- If there's a flightplan, render it
-      if stringIsNotEmpty(FlightplanAltIcao) then
+      if Globals.stringIsNotEmpty(FlightplanAltIcao) then
         -- Note: Once, the alt name was shown as well, but it takes too much space even though the value is pretty low
         -- Consequently, the alt name was removed in 11/2020
         -- local altName = .. " / " .. FlightplanAltName
@@ -2327,14 +1941,15 @@ function buildVatsimbriefHelperAtcWindowCanvas()
       AtcWindow.StationsSelection = nil
 
       -- Only show "downloading" message when there is no VATSIM data yet and no other download status is rendered
-      showVatsimDataIsDownloading = CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.DOWNLOADING
+      showVatsimDataIsDownloading =
+        VatsimDataContainer.CurrentFetchStatus == VatsimDataContainer.FetchStatus.DOWNLOADING
       showVatsimDataIsDisabled =
-        CurrentVatsimDataFetchStatus == VatsimDataFetchStatus.NO_DOWNLOAD_ATTEMPTED and
+        VatsimDataContainer.CurrentFetchStatus == VatsimDataContainer.FetchStatus.NO_DOWNLOAD_ATTEMPTED and
         getConfiguredAutoRefreshAtcSettingDefaultTrue() ~= true
     else
       showVatsimDataIsDownloading = false
       showVatsimDataIsDisabled = false
-      if stringIsEmpty(FlightplanId) then
+      if Globals.stringIsEmpty(FlightplanId) then
         AtcWindow.StationsStatus =
           ("Got %d ATC stations. Waiting for flight plan ..."):format(#VatsimData.MapAtcIdentifiersToAtcInfo)
         AtcWindow.Stations = nil
@@ -2358,7 +1973,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
             {FlightplanOriginIcao, FlightplanOriginIata},
             {FlightplanDestIcao, FlightplanDestIata}
           }
-          if stringIsNotEmpty(FlightplanAltIcao) then
+          if Globals.stringIsNotEmpty(FlightplanAltIcao) then
             table.insert(consideredAirports, {FlightplanAltIcao, FlightplanAltIata})
           end
 
@@ -2384,7 +1999,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     updateAtcWindowTitle()
 
     AtcWindowLastRenderedSimbriefFlightplanFetchStatus = CurrentSimbriefFlightplanFetchStatus
-    AtcWindowLastRenderedVatsimDataFetchStatus = CurrentVatsimDataFetchStatus
+    AtcWindowLastRenderedVatsimDataFetchStatus = VatsimDataContainer.CurrentFetchStatus
     AtcWindow.AtcWindowLastRenderedFlightplanId = FlightplanId
     AtcWindowLastAtcIdentifiersUpdatedTimestamp = VatsimData.AtcIdentifiersUpdatedTimestamp
     LastSelectedAtcFrequenciesChangedTimestamp = SelectedAtcFrequenciesChangedTimestamp
@@ -2395,11 +2010,11 @@ function buildVatsimbriefHelperAtcWindowCanvas()
   -- Paint
   imgui.SetWindowFontScale(AtcWindow.FontScale)
 
-  if stringIsNotEmpty(AtcWindowFlightplanDownloadStatus) then
+  if Globals.stringIsNotEmpty(AtcWindowFlightplanDownloadStatus) then
     imgui.PushStyleColor(imgui.constant.Col.Text, AtcWindowFlightplanDownloadStatusColor)
     imgui.TextUnformatted(AtcWindowFlightplanDownloadStatus)
     imgui.PopStyleColor()
-  elseif stringIsNotEmpty(AtcWindowVatsimDataDownloadStatus) then
+  elseif Globals.stringIsNotEmpty(AtcWindowVatsimDataDownloadStatus) then
     -- Why elseif? For user comfort, we don't show Flightplan AND VATSIM errors at the same time.
     -- If the network is broken, this looks ugly.
     -- The flightplan error is much more generic and contains more infromation, e.g. that
@@ -2408,7 +2023,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     imgui.TextUnformatted(AtcWindowVatsimDataDownloadStatus)
     imgui.PopStyleColor()
   end
-  if stringIsNotEmpty(Route) then
+  if Globals.stringIsNotEmpty(Route) then
     imgui.PushStyleColor(imgui.constant.Col.Text, colorA320Blue)
     imgui.TextUnformatted(Route)
     imgui.TextUnformatted(RouteSeparatorLine)
@@ -2428,7 +2043,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
   if showVatsimDataIsDownloading then
     imgui.TextUnformatted("Downloading VATSIM data ...")
   end
-  if stringIsNotEmpty(AtcWindow.StationsStatus) then
+  if Globals.stringIsNotEmpty(AtcWindow.StationsStatus) then
     imgui.TextUnformatted(AtcWindow.StationsStatus)
   end
   if AtcWindow.StationsSelection ~= nil then
@@ -2441,7 +2056,7 @@ local vatsimbriefHelperAtcWindow = nil
 function updateAtcWindowTitle()
   if vatsimbriefHelperAtcWindow ~= nil then
     local title = ("Vatsimbrief Helper ATC (%s)"):format(os.date("%H%MZ"))
-    if stringIsNotEmpty(FlightplanCallsign) then
+    if Globals.stringIsNotEmpty(FlightplanCallsign) then
       title = title .. " for " .. FlightplanCallsign
     end
     float_wnd_set_title(vatsimbriefHelperAtcWindow, title)
@@ -2612,7 +2227,7 @@ function buildVatsimbriefHelperControlWindowCanvas()
     imgui.TextUnformatted("  ")
     imgui.SameLine()
     if imgui.Button(" Refresh ATC Data Now ") then
-      clearAtcData()
+      VatsimData:clear()
       refreshVatsimDataNow()
     end
     imgui.SameLine()
@@ -2706,7 +2321,7 @@ function buildVatsimbriefHelperControlWindowCanvas()
           local pathChanged, path =
             imgui.InputText(
             "",
-            defaultIfBlank(ControlWindow.mapFlightPlanDownloadTypeToDirTmp[fileTypes[i]], emptyString),
+            defaultIfBlank(ControlWindow.mapFlightPlanDownloadTypeToDirTmp[fileTypes[i]], Globals.emptyString),
             255
           )
           if pathChanged then
@@ -2742,7 +2357,7 @@ function buildVatsimbriefHelperControlWindowCanvas()
           local fileNameChanged, fileName =
             imgui.InputText(
             "",
-            defaultIfBlank(ControlWindow.mapFlightPlanDownloadTypeToFileNameTmp[fileTypes[i]], emptyString),
+            defaultIfBlank(ControlWindow.mapFlightPlanDownloadTypeToFileNameTmp[fileTypes[i]], Globals.emptyString),
             255
           )
           if fileNameChanged then
@@ -2798,7 +2413,7 @@ function toggleControlWindow(value)
 end
 
 local function initiallyShowControlWindow()
-  return stringIsEmpty(getConfiguredSimbriefUserName())
+  return Globals.stringIsEmpty(getConfiguredSimbriefUserName())
 end
 
 add_macro(
@@ -2848,5 +2463,6 @@ vatsimbriefHelperPackageExport = {}
 vatsimbriefHelperPackageExport.test = {}
 vatsimbriefHelperPackageExport.test.LazyInitialization = LazyInitialization
 vatsimbriefHelperPackageExport.test.Configuration = Configuration
-
+vatsimbriefHelperPackageExport.test.VatsimData = VatsimData
+vatsimbriefHelperPackageExport.test.computeDistanceOnEarth = Globals.computeDistanceOnEarth
 return
