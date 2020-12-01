@@ -1,3 +1,5 @@
+LuaIniParserStub = require("LIP")
+
 TestHighLevel = {
     Constants = {
         SkrgPos = {6.1708, -75.4276}
@@ -27,7 +29,7 @@ end
 
 function TestHighLevel:testRunVatsimbriefHelper()
     local invalidUsername = "<<<INVALID_SIMBRIEF_USERNAME>>>"
-    local username = invalidUsername or nil
+    local username = nil or invalidUsername
     local ENABLED = false
     if (not ENABLED) then
         return

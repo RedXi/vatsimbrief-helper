@@ -1,4 +1,5 @@
 local Globals = require("vatsimbrief-helper.globals")
+local VatsimData = require("vatsimbrief-helper.state.vatsim_data")
 
 TestPublicInterface = {}
 
@@ -9,7 +10,7 @@ function TestPublicInterface:testGettingStationsWorks()
     }
 
     TestHighLevel:createDatarefsAndBootstrapVatsimbriefHelper()
-    vatsimbriefHelperPackageExport.test.VatsimData:processSuccessfulHttpResponse(dummyHttpRequest)
+    vatsimbriefHelperPackageExport.test.VatsimData.container:processSuccessfulHttpResponse(dummyHttpRequest)
 
     local atcInfos = VatsimbriefHelperPublicInterface.getAtcStationsForFrequencyClosestFirst("121.700")
     luaUnit.assertEquals(#atcInfos, 3)

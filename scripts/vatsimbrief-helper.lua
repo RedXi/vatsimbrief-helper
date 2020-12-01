@@ -1299,16 +1299,16 @@ local refreshFlightplanTimer =
 -- VATSIM data
 --
 
-local Datarefs = require("vatsimbrief-helper.datarefs")
-local VatsimDataContainer = require("vatsimbrief-helper.vatsim_data_container")
-local VatsimData = VatsimDataContainer:new()
+local Datarefs = require("vatsimbrief-helper.state.datarefs")
+local VatsimDataContainer = require("vatsimbrief-helper.components.vatsim_data_container")
+local VatsimData = require("vatsimbrief-helper.state.vatsim_data")
 
 local function processSuccessfulVatsimDataRequest(httpRequest)
-  VatsimData:processSuccessfulHttpResponse(httpRequest)
+  VatsimData.container:processSuccessfulHttpResponse(httpRequest)
 end
 
 local function processFailedVatsimDataRequest(httpRequest)
-  VatsimData:processFailedHttpRequest(httpRequest)
+  VatsimData.container:processFailedHttpRequest(httpRequest)
 end
 
 TRACK_ISSUE(
@@ -1325,7 +1325,6 @@ local function refreshVatsimDataNow()
       function()
         VatsimDataContainer.CurrentFetchStatus = VatsimDataContainer.FetchStatus.DOWNLOADING
         local url = "http://data.vatsim.net/vatsim-data.txt"
-        -- performDefaultHttpGetRequest(url, processSuccessfulHttpResponse, processVatsimDataDownloadFailure)
         performDefaultHttpGetRequest(url, processSuccessfulVatsimDataRequest, processFailedVatsimDataRequest)
       end
     )
@@ -1352,40 +1351,18 @@ local refreshVatsimDataTimer =
 --
 -- Public Interface
 --
-TRACK_ISSUE(
-  "Feature",
-  "Interface users can (and will, because it's Lua) easily break the VatsimDataContainer.",
-  "Copy all retrieved data to avoid issues."
-)
-VatsimbriefHelperPublicInterface = {
-  getInterfaceVersion = function()
-    return 1
-  end,
-  getAtcStationsForFrequencyClosestFirst = function(fullFrequencyString)
-    local atcInfos = VatsimData:getAtcStationsForFrequencyClosestFirst(fullFrequencyString)
-    if (atcInfos == nil) then
-      return nil
-    end
 
-    local atcInfosCopy = {}
-    for _, atcInfo in ipairs(atcInfos) do
-      local newAtcInfo = {
-        id = atcInfo.id,
-        description = atcInfo.description
-      }
-      table.insert(atcInfosCopy, newAtcInfo)
-    end
-    return atcInfosCopy
-  end
-}
+local PublicInterface = require("vatsimbrief-helper.public_interface")
 
 --
--- Initialization
+-- Initialization and Main Thread
 --
 -- To deal with lazily initialized resources, the initialization method is retried automatically
 -- until it succeeds once. For instance, it can check for datarefs and stop initialization if
 -- a required dataref is not yet initialized.
 --
+
+local MainThread = require("vatsimbrief-helper.main_thread")
 
 local LazyInitializationSingleton
 do
@@ -1398,6 +1375,10 @@ do
     }
   }
 
+  function LazyInitialization:loop()
+    MainThread.loop()
+  end
+
   function LazyInitialization:_canInitializeNow()
     if (VHFHelperEventBus == nil) then
       return false
@@ -1409,6 +1390,7 @@ do
   function LazyInitialization:_initializeNow()
     VHFHelperEventBus.on(VHFHelperEventOnFrequencyChanged, onVHFHelperFrequencyChanged)
     Datarefs.bootstrap()
+    do_every_frame("LazyInitialization:loop()")
   end
 
   function LazyInitialization:tryVatsimbriefHelperInit()
@@ -1729,7 +1711,7 @@ add_macro(
 
 local SelectedAtcFrequenciesChangedTimestamp = nil
 InlineButtonBlob = require("shared_components.inline_button_blob")
-AtcStringInlineButtonBlob = require("vatsimbrief-helper.atc_inline_button_blob")
+AtcStringInlineButtonBlob = require("vatsimbrief-helper.components.atc_inline_button_blob")
 
 function onVHFHelperFrequencyChanged()
   SelectedAtcFrequenciesChangedTimestamp = os.clock()
@@ -1835,7 +1817,7 @@ local function assembleAirportStations(airportIcao, airportIata)
 
   local icaoPrefix = airportIcao .. "_"
   local iataPrefix = airportIata .. "_"
-  for _, v in pairs(VatsimData.MapAtcIdentifiersToAtcInfo) do
+  for _, v in pairs(VatsimData.container.MapAtcIdentifiersToAtcInfo) do
     if v.id:find(icaoPrefix) == 1 or v.id:find(iataPrefix) == 1 then
       if stringEndsWith(v.id, "_ATIS") then
         table.insert(atis, stationToNameFrequencyArray(v))
@@ -1884,7 +1866,8 @@ end
 function buildVatsimbriefHelperAtcWindowCanvas()
   -- Invent a caching mechanism to prevent rendering the strings each frame
   local flightplanChanged = AtcWindow.AtcWindowLastRenderedFlightplanId ~= FlightplanId
-  local atcIdentifiersUpdated = AtcWindowLastAtcIdentifiersUpdatedTimestamp ~= VatsimData.AtcIdentifiersUpdatedTimestamp
+  local atcIdentifiersUpdated =
+    AtcWindowLastAtcIdentifiersUpdatedTimestamp ~= VatsimData.container.AtcIdentifiersUpdatedTimestamp
   local flightplanFetchStatusChanged =
     AtcWindowLastRenderedSimbriefFlightplanFetchStatus ~= CurrentSimbriefFlightplanFetchStatus
   local vatsimDataFetchStatusChanged =
@@ -1913,7 +1896,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     end
 
     -- Render download status of VATSIM data
-    statusType = VatsimData.CurrentFetchStatus.level
+    statusType = VatsimData.container.CurrentFetchStatus.level
     if statusType == VatsimDataContainer.FetchStatusLevel.SYSTEM_RELATED then
       AtcWindowVatsimDataDownloadStatus, AtcWindowVatsimDataDownloadStatusColor =
         getVatsimDataFetchStatusMessageAndColor()
@@ -1952,7 +1935,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     RouteSeparatorLine = string.rep("-", #Route)
 
     -- Try to render ATC data
-    if numberIsNilOrZero(VatsimData.AtcIdentifiersUpdatedTimestamp) then -- We have NO ATC data (yet?)
+    if numberIsNilOrZero(VatsimData.container.AtcIdentifiersUpdatedTimestamp) then -- We have NO ATC data (yet?)
       AtcWindow.StationsStatus = ""
       AtcWindow.Stations = nil
       AtcWindow.AtcsString = ""
@@ -1969,12 +1952,12 @@ function buildVatsimbriefHelperAtcWindowCanvas()
       showVatsimDataIsDisabled = false
       if Globals.stringIsEmpty(FlightplanId) then
         AtcWindow.StationsStatus =
-          ("Got %d ATC stations. Waiting for flight plan ..."):format(#VatsimData.MapAtcIdentifiersToAtcInfo)
+          ("Got %d ATC stations. Waiting for flight plan ..."):format(#VatsimData.container.MapAtcIdentifiersToAtcInfo)
         AtcWindow.Stations = nil
         AtcWindow.AtcsString = ""
         AtcWindow.StationsSelection = nil
       else
-        if #VatsimData.MapAtcIdentifiersToAtcInfo == 0 then
+        if #VatsimData.container.MapAtcIdentifiersToAtcInfo == 0 then
           AtcWindow.StationsStatus = "No ATCs found. This will probably be a technical problem."
           AtcWindow.Stations = nil
           AtcWindow.AtcsString = ""
@@ -2019,7 +2002,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     AtcWindowLastRenderedSimbriefFlightplanFetchStatus = CurrentSimbriefFlightplanFetchStatus
     AtcWindowLastRenderedVatsimDataFetchStatus = VatsimDataContainer.CurrentFetchStatus
     AtcWindow.AtcWindowLastRenderedFlightplanId = FlightplanId
-    AtcWindowLastAtcIdentifiersUpdatedTimestamp = VatsimData.AtcIdentifiersUpdatedTimestamp
+    AtcWindowLastAtcIdentifiersUpdatedTimestamp = VatsimData.container.AtcIdentifiersUpdatedTimestamp
     LastSelectedAtcFrequenciesChangedTimestamp = SelectedAtcFrequenciesChangedTimestamp
     LastRadioHelperInstalledState = isRadioHelperPanelActive()
     AtcWindowHasRenderedContent = true
@@ -2048,8 +2031,9 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     imgui.PopStyleColor()
   end
   if getConfiguredAutoRefreshAtcSettingDefaultTrue() then -- Only show overaged data when auto refresh is on
-    if VatsimData.AtcIdentifiersUpdatedTimestamp ~= nil then -- Show information if data is old
-      local ageOfAtcDataMinutes = math.floor((os.clock() - VatsimData.AtcIdentifiersUpdatedTimestamp) * (1.0 / 60.0))
+    if VatsimData.container.AtcIdentifiersUpdatedTimestamp ~= nil then -- Show information if data is old
+      local ageOfAtcDataMinutes =
+        math.floor((os.clock() - VatsimData.container.AtcIdentifiersUpdatedTimestamp) * (1.0 / 60.0))
       if ageOfAtcDataMinutes >= 3 then
         imgui.PushStyleColor(imgui.constant.Col.Text, colorWarn)
         -- Note: Render text here as the minutes update every minute and not "on event" when a re-rendering occurs

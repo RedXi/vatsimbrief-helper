@@ -1,6 +1,6 @@
 local imguiStub = require("imgui_stub")
 local vhfHelperStub = require("vhf_helper")
-local AtcStringInlineButtonBlob = require("vatsimbrief-helper.atc_inline_button_blob")
+local AtcStringInlineButtonBlob = require("vatsimbrief-helper.components.atc_inline_button_blob")
 
 TestAtcButtonBlob = {}
 

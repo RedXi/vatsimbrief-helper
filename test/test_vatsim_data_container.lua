@@ -1,5 +1,5 @@
 local Globals = require("vatsimbrief-helper.globals")
-local VatsimDataContainer = require("vatsimbrief-helper.vatsim_data_container")
+local VatsimDataContainer = require("vatsimbrief-helper.components.vatsim_data_container")
 local flyWithLuaStub = require("xplane_fly_with_lua_stub")
 
 TestVatsimDataContainer = {}

@@ -1,4 +1,5 @@
 local Globals = require("vatsimbrief-helper.globals")
+local MainThread = require("vatsimbrief-helper.main_thread")
 
 local VatsimDataContainer
 do
@@ -30,7 +31,7 @@ do
     TRACK_ISSUE(
       "Tech Debt",
       "MapAtcIdentifiersToAtcInfo never mapped identifiers to ATC info. It was an auto-index-key table. Leave it like that for now.",
-      TRIGGER_ISSUE_IF(loadstring("newInstanceWithState.MapAtcIdentifiersToAtcInfo") == nil)
+      TRIGGER_ISSUE_IF(loadstring("newInstanceWithState.MapAtcIdentifiersToAtcInfo") ~= nil)
     )
 
     setmetatable(newInstanceWithState, self)
@@ -135,6 +136,8 @@ do
         linesWithoutLocation
       )
     )
+
+    MainThread.emitVatsimDataUpdateEvent()
   end
 
   TRACK_ISSUE(

@@ -2,6 +2,8 @@
 Vatsimbrief Helper offers a public API via a global `VatsimbriefHelperPublicInterface`:
 ```text
 if (VatsimbriefHelperPublicInterface ~= nil and VatsimbriefHelperPublicInterface.getInterfaceVersion() == 1) then
+  -- Setup event listener
+  ...
   -- Call method on VatsimbriefHelperPublicInterface
   ...
 end
@@ -18,4 +20,23 @@ atcInfos = {
   { id = "SEA_GND", description = "Online until appx 2300z / How am I doing?"},
   { id = "CYVR_GND", description = "Vancouver Ground^§Charts at www.fltplan.com^§Info at czvr.vatcan.ca"}
 }
+```
+
+Use the `VatsimbriefHelperEventOnVatsimDataRefreshed` event to listen to ATC data updates:
+```text
+function onVatsimDataRefreshed()
+  -- Do something when Vatsim data has been downloaded successfully a moment ago
+  ...
+end
+
+-- Start listening
+if (VatsimbriefHelperEventBus ~= nil) then
+  VHFHelperEventBus.on(VatsimbriefHelperEventOnVatsimDataRefreshed, onVatsimDataRefreshed)
+end
+
+-- Run your app
+...
+
+-- Stop listening
+VHFHelperEventBus.off(VatsimbriefHelperEventOnVatsimDataRefreshed, onVatsimDataRefreshed)
 ```
