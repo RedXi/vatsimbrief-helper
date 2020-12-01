@@ -126,7 +126,12 @@ local licensesOfDependencies = {
   -- Configuration handling
   {"LIP - Lua INI Parser", "MIT License", "https://github.com/Dynodzzo/Lua_INI_Parser"},
   -- Simbrief flightplan
-  {"xml2lua", "MIT License", "https://github.com/manoelcampos/xml2lua"}
+  {"xml2lua", "MIT License", "https://github.com/manoelcampos/xml2lua"},
+  {
+    "Lua Event Bus",
+    "MIT License",
+    "https://github.com/prabirshrestha/lua-eventbus"
+  }
 }
 
 for i = 1, #licensesOfDependencies do
