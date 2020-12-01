@@ -50,7 +50,7 @@ function TestVatsimDataContainer:testAtcInfoTableIsCorrect()
     luaUnit.assertEquals(atcInfo.id, tsid)
     luaUnit.assertEquals(atcInfo.frequency, "133.700")
     luaUnit.assertEquals(
-        atcInfo.readableName,
+        atcInfo.description,
         "Havana Center / voice English & Spanish^§For charts and scenery visit havana.vatcar.org"
     )
     luaUnit.assertEquals(atcInfo.latitude, tonumber("21.99509"))
@@ -59,7 +59,6 @@ end
 
 function TestVatsimDataContainer:testAtcInfosPerFrequencyAreCorrect()
     local tf = "121.700"
-    local tsid = "CYVR_GND"
 
     local atcInfos = self.VatsimData.MapAtcFrequenciesToAtcInfos[tf]
     luaUnit.assertEquals(#atcInfos, 3)

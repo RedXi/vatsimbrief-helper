@@ -1,4 +1,4 @@
-Globals = {}
+local Globals = {}
 
 TRACK_ISSUE = TRACK_ISSUE or function(component, description, workaround)
     end
@@ -57,8 +57,17 @@ Globals.splitStringBySeparator = function(str, separator)
 end
 TRACK_ISSUE(
     "Bug",
-    "If there's only one character between two separators, this function returns an empty string.",
-    TRIGGER_ISSUE_IF(Globals.splitStringBySeparator(":c:", ":")[1] == Globals.emptyString)
+    "If there's only one character between two separators, this function returns an empty string and too many splits.",
+    TRIGGER_ISSUE_IF(
+        function()
+            local splits = Globals.splitStringBySeparator(":0:", ":")
+            if (#splits ~= 3 or splits[2] == Globals.emptyString or splits[2] ~= "0") then
+                return true
+            end
+
+            return false
+        end
+    )
 )
 
 Globals.stringIsEmpty = function(s)

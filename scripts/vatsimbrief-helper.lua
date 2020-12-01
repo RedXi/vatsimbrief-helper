@@ -1352,12 +1352,30 @@ local refreshVatsimDataTimer =
 --
 -- Public Interface
 --
+TRACK_ISSUE(
+  "Feature",
+  "Interface users can (and will, because it's Lua) easily break the VatsimDataContainer.",
+  "Copy all retrieved data to avoid issues."
+)
 VatsimbriefHelperPublicInterface = {
   getInterfaceVersion = function()
     return 1
   end,
   getAtcStationsForFrequencyClosestFirst = function(fullFrequencyString)
-    return VatsimData:getAtcStationsForFrequencyClosestFirst(fullFrequencyString)
+    local atcInfos = VatsimData:getAtcStationsForFrequencyClosestFirst(fullFrequencyString)
+    if (atcInfos == nil) then
+      return nil
+    end
+
+    local atcInfosCopy = {}
+    for _, atcInfo in ipairs(atcInfos) do
+      local newAtcInfo = {
+        id = atcInfo.id,
+        description = atcInfo.description
+      }
+      table.insert(atcInfosCopy, newAtcInfo)
+    end
+    return atcInfosCopy
   end
 }
 

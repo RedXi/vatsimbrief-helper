@@ -44,7 +44,7 @@ It solves major issues that VR pilots usually face:
 **Happy Flying!**
 
 ## VHF Helper Integration
-Vatsimbrief Helper supports _clicking a frequency in the ATC window_ and subsequently tune it in via [VHF Helper](https://github.com/VerticalLongboard/xplane-vhf-helper/). Install and enable both at the same time and you're good to go.
+Vatsimbrief Helper supports _clicking a frequency in the ATC window_ and subsequently tuning it in via [VR Radio Helper](https://github.com/VerticalLongboard/xplane-vhf-helper/). Install and enable both at the same time and you're good to go.
 
 ## Dependencies
 
@@ -65,3 +65,7 @@ Sure. One can close the ATC window in the menu at `Plugins / FlyWithLua / FlyWit
 ## Feedback
 
 You're welcome to provide feedback or report issues on [gitlab](https://github.com/RedXi/vatsimbrief-helper).
+
+## Public Interface
+
+VatsimbriefHelper offers a public interface to other scripts. For more information, see [Vatsimbrief Helper Public Interface](PUBLIC-INTERFACE.md). At the moment, [VR Radio Helper](https://github.com/VerticalLongboard/xplane-vhf-helper/) uses the Vatsimbrief Helper ATC data to display station names.

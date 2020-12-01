@@ -1,4 +1,4 @@
-Globals = require("vatsimbrief-helper.globals")
+local Globals = require("vatsimbrief-helper.globals")
 
 local VatsimDataContainer
 do
@@ -63,7 +63,7 @@ do
 
   function VatsimDataContainer:_processAtcLinesOnly(lines)
     local linesWithoutIdOrFrequency = 0
-    local linesWithoutReadableName = 0
+    local linesWithoutDescription = 0
     local linesWithoutLocation = 0
     local linesAtc = 0
     TRACK_ISSUE(
@@ -85,17 +85,17 @@ do
           local newFrequency = parts[5]
           local newLatitude = parts[6]
           local newLongitude = parts[7]
-          local newReadableName = parts[45]
+          local newDescription = parts[45]
 
           if (not Globals.stringIsEmpty(newId) and not Globals.stringIsEmpty(newFrequency)) then
             local newAtcInfo = {
               id = newId,
               frequency = newFrequency,
-              readableName = newReadableName
+              description = newDescription
             }
 
-            if (Globals.stringIsEmpty(newReadableName)) then
-              linesWithoutReadableName = linesWithoutReadableName + 1
+            if (Globals.stringIsEmpty(newDescription)) then
+              linesWithoutDescription = linesWithoutDescription + 1
             end
 
             if (not Globals.stringIsEmpty(newLatitude) and not Globals.stringIsEmpty(newLongitude)) then
@@ -127,11 +127,11 @@ do
     end
 
     logMsg(
-      ("Processed Vatsim data: %d lines, %d ATC, %d w/o ID or frequency, %d w/o readable name, %d w/o location"):format(
+      ("Processed Vatsim data: %d lines, %d ATC, %d w/o ID or frequency, %d w/o description, %d w/o location"):format(
         #lines,
         linesAtc,
         linesWithoutIdOrFrequency,
-        linesWithoutReadableName,
+        linesWithoutDescription,
         linesWithoutLocation
       )
     )

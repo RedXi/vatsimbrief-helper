@@ -1,3 +1,5 @@
+local Globals = require("vatsimbrief-helper.globals")
+
 TestPublicInterface = {}
 
 function TestPublicInterface:testGettingStationsWorks()
