@@ -2,7 +2,7 @@
 Vatsimbrief Helper offers a public API via a global `VatsimbriefHelperPublicInterface`:
 ```text
 if (VatsimbriefHelperPublicInterface ~= nil and VatsimbriefHelperPublicInterface.getInterfaceVersion() == 1) then
-  - Call method on VatsimbriefHelperPublicInterface
+  -- Call method on VatsimbriefHelperPublicInterface
   ...
 end
 ```
