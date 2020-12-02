@@ -31,5 +31,5 @@ SectionEnd
 Section "Dependencies"
 	SetOutPath $INSTDIR\Resources\plugins\FlyWithLua\Modules
 	
-	File ..\modules\*
+	File /r ..\modules\*
 SectionEnd
