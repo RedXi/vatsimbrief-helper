@@ -62,7 +62,8 @@ flyWithLuaStub = {
     doOftenFunctions = {},
     doEveryFrameFunctions = {},
     macros = {},
-    commands = {}
+    commands = {},
+    nonResettableNumLogMessagesSuppressed = 0
 }
 
 function logMsg(stringToLog)
@@ -73,13 +74,17 @@ function logMsg(stringToLog)
     if (stringToLog ~= nil) then
         if (flyWithLuaStub.suppressLogMessageString ~= nil) then
             if (stringToLog:sub(1, #flyWithLuaStub.suppressLogMessageString) == flyWithLuaStub.suppressLogMessageString) then
+                flyWithLuaStub.nonResettableNumLogMessagesSuppressed =
+                    flyWithLuaStub.nonResettableNumLogMessagesSuppressed + 1
                 return
             end
         end
 
         if (flyWithLuaStub.suppressLogMessageStrings ~= nil) then
             for str, _ in pairs(flyWithLuaStub.suppressLogMessageStrings) do
-                if (stringToLog:find(str) ~= nil) then
+                if (stringToLog:find(str, 1, true) ~= nil) then
+                    flyWithLuaStub.nonResettableNumLogMessagesSuppressed =
+                        flyWithLuaStub.nonResettableNumLogMessagesSuppressed + 1
                     return
                 end
             end
@@ -87,6 +92,10 @@ function logMsg(stringToLog)
     end
 
     print("[7m" .. stringToLog .. "[0m")
+end
+
+function flyWithLuaStub:printSummary()
+    print(("FlyWithLuaStub: [7m%d log messages suppressed[0m"):format(self.nonResettableNumLogMessagesSuppressed))
 end
 
 function flyWithLuaStub:suppressLogMessagesContaining(listOfStrings)

@@ -1,5 +1,11 @@
 local vatsimbriefHelper = dofile("scripts/vatsimbrief-helper.lua")
-flyWithLuaStub:suppressLogMessagesBeginningWith("Vatsimbrief Helper using '")
+flyWithLuaStub:suppressLogMessagesContaining(
+    {
+        "Vatsimbrief Helper using '",
+        "Vatsimbrief configuration file '.\\TEMP\\TEST_RUN\\vatsimbrief-helper.ini' missing! Running without configuration settings.",
+        "Processed Vatsim data: 1016 lines, 154 ATC, 0 w/o ID or frequency, 58 w/o description, 1 w/o location"
+    }
+)
 
 require("shared_components.test_suite")
 

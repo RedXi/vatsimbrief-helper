@@ -19,6 +19,7 @@ local runner = luaUnit.LuaUnit.new()
 -- runner:setOutput(luaUnitOutput.ColorText)
 runner:setOutput(luaUnitOutput.ColorTap)
 local runnerResult = runner:runSuite()
+flyWithLuaStub:printSummary()
 issueTracker:printSummary()
 if (os.getenv("ISSUE_TRACKER_TRIGGER_ALL_ISSUES") ~= nil) then
     issueTracker:printAllIssues()
