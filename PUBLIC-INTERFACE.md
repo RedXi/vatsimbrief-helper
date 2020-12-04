@@ -31,12 +31,12 @@ end
 
 -- Start listening
 if (VatsimbriefHelperEventBus ~= nil) then
-  VHFHelperEventBus.on(VatsimbriefHelperEventOnVatsimDataRefreshed, onVatsimDataRefreshed)
+  VatsimbriefHelperEventBus.on(VatsimbriefHelperEventOnVatsimDataRefreshed, onVatsimDataRefreshed)
 end
 
 -- Run your app
 ...
 
 -- Stop listening
-VHFHelperEventBus.off(VatsimbriefHelperEventOnVatsimDataRefreshed, onVatsimDataRefreshed)
+VatsimbriefHelperEventBus.off(VatsimbriefHelperEventOnVatsimDataRefreshed, onVatsimDataRefreshed)
 ```
