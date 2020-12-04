@@ -2062,7 +2062,7 @@ local vatsimbriefHelperAtcWindow = nil
 
 function updateAtcWindowTitle()
   if vatsimbriefHelperAtcWindow ~= nil then
-    local title = ("Vatsimbrief Helper ATC (%s)"):format(os.date("%H%MZ"))
+    local title = ("Vatsimbrief Helper ATC (%s)"):format(os.date("!%H%MZ")) -- '!' means "give me ZULU"
     if Globals.stringIsNotEmpty(FlightplanCallsign) then
       title = title .. " for " .. FlightplanCallsign
     end
