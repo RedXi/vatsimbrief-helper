@@ -1025,11 +1025,11 @@ local FlightplanCallsign = ""
 local FlightplanRoute = ""
 local FlightplanAltRoute = ""
 
-local FlightplanSchedOut = 0
-local FlightplanSchedOff = 0
-local FlightplanSchedOn = 0
-local FlightplanSchedIn = 0
-local FlightplanSchedBlock = 0
+local FlightplanEstOut = 0
+local FlightplanEstOff = 0
+local FlightplanEstOn = 0
+local FlightplanEstIn = 0
+local FlightplanEstBlock = 0
 
 local FlightplanAltitude = 0
 local FlightplanAltAltitude = 0
@@ -1168,11 +1168,11 @@ local function processNewFlightplan(httpRequest)
           FlightplanAltRoute = "(none)"
         end
 
-        FlightplanSchedOut = tonumber(SimbriefFlightplan.times.sched_out)
-        FlightplanSchedOff = tonumber(SimbriefFlightplan.times.sched_off)
-        FlightplanSchedOn = tonumber(SimbriefFlightplan.times.sched_on)
-        FlightplanSchedIn = tonumber(SimbriefFlightplan.times.sched_in)
-        FlightplanSchedBlock = tonumber(SimbriefFlightplan.times.sched_block)
+        FlightplanEstOut = tonumber(SimbriefFlightplan.times.est_out)
+        FlightplanEstOff = tonumber(SimbriefFlightplan.times.est_off)
+        FlightplanEstOn = tonumber(SimbriefFlightplan.times.est_on)
+        FlightplanEstIn = tonumber(SimbriefFlightplan.times.est_in)
+        FlightplanEstBlock = tonumber(SimbriefFlightplan.times.est_block)
 
         -- TOC waypoint is identified by "TOC"
         -- It seems flightplans w/o route are also possible to create.
@@ -1463,14 +1463,12 @@ local function createFlightplanTableEntry(name, value)
   return ("%-" .. FlightplanWindow.KeyWidth .. "s%s"):format(name .. ":", value)
 end
 
-function timespanToHm(s)
-  local seconds = tonumber(s)
+function durationSecsToCeiledHHMM(s)
+  s = tonumber(s)
 
-  local hrs = math.floor(seconds / (60 * 60))
-  seconds = seconds % hrs * 60 * 60
-  local mins = math.floor(seconds / 60)
-  --seconds = seconds % mins * 60
-  --local secs = math.floor(seconds)
+  local hrs = math.floor(s / (60 * 60))
+  s = s % (60 * 60)
+  local mins = math.ceil(s / 60)
   return ("%02d:%02d"):format(hrs, mins)
 end
 
@@ -1549,11 +1547,11 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
       local timeFormat = "%I:%M%p"
       FlightplanWindowSchedule =
         ("OUT=%s OFF=%s BLOCK=%s ON=%s IN=%s"):format(
-        os.date("%I:%M%p", FlightplanSchedOut),
-        os.date("%I:%M%p", FlightplanSchedOn),
-        timespanToHm(FlightplanSchedBlock),
-        os.date("%I:%M%p", FlightplanSchedIn),
-        os.date("%I:%M%p", FlightplanSchedBlock)
+        os.date("!%I:%M%p", FlightplanEstOut),
+        os.date("!%I:%M%p", FlightplanEstOn),
+        durationSecsToCeiledHHMM(FlightplanEstBlock),
+        os.date("!%I:%M%p", FlightplanEstIn),
+        os.date("!%I:%M%p", FlightplanEstBlock)
       )
       FlightplanWindowSchedule = createFlightplanTableEntry("Schedule", FlightplanWindowSchedule)
 
@@ -1596,7 +1594,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
           ("DIST=%d/%d BLOCKTIME=%s CI=%d WINDDIR=%d WINDSPD=%d"):format(
           FlightplanDistance,
           FlightplanAltDistance,
-          timespanToHm(FlightplanSchedBlock),
+          durationSecsToCeiledHHMM(FlightplanEstBlock),
           FlightplanCostindex,
           FlightplanAvgWindDir,
           FlightplanAvgWindSpeed
@@ -1605,7 +1603,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
         FlightplanWindowTrack =
           ("DIST=%d BLOCKTIME=%s CI=%d WINDDIR=%d WINDSPD=%d"):format(
           FlightplanDistance,
-          timespanToHm(FlightplanSchedBlock),
+          durationSecsToCeiledHHMM(FlightplanEstBlock),
           FlightplanCostindex,
           FlightplanAvgWindDir,
           FlightplanAvgWindSpeed
@@ -2062,7 +2060,7 @@ local vatsimbriefHelperAtcWindow = nil
 
 function updateAtcWindowTitle()
   if vatsimbriefHelperAtcWindow ~= nil then
-    local title = ("Vatsimbrief Helper ATC (%s)"):format(os.date("!%H%MZ")) -- '!' means "give me ZULU"
+    local title = ("Vatsimbrief Helper ATC (%s)"):format(os.date("!%H%MUTC")) -- '!' means "give me ZULU"
     if Globals.stringIsNotEmpty(FlightplanCallsign) then
       title = title .. " for " .. FlightplanCallsign
     end
