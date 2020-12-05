@@ -270,22 +270,34 @@ end
 
 --- Specific configuration getters/setters
 
-local function getConfiguredSimbriefUserName()
-  if (Configuration.File.simbrief) then
-    logMsg(Configuration.File.simbrief.username)
-  end
-  if Configuration.File.simbrief ~= nil and Globals.stringIsNotEmpty(Configuration.File.simbrief.username) then
-    return trim(Configuration.File.simbrief.username)
-  else
-    return ""
-  end
-end
-
 local function setConfiguredUserName(value)
   if Configuration.File.simbrief == nil then
     Configuration.File.simbrief = {}
   end
   Configuration.File.simbrief.username = trim(value)
+end
+
+local function getConfiguredSimbriefUserName()
+  if Configuration.File.simbrief ~= nil and Globals.stringIsNotEmpty(Configuration.File.simbrief.username) then
+    return Configuration.File.simbrief.username
+  else
+    -- Try to guess
+    local altConfigurationFilePath = SCRIPT_DIRECTORY .. "simbrief_helper.ini"
+    if fileExists(altConfigurationFilePath) then
+      local altConfiguration = LIP.load(altConfigurationFilePath)
+      if altConfiguration.simbrief ~= nil and Globals.stringIsNotEmpty(altConfiguration.simbrief.username) then
+        local importedUsername = altConfiguration.simbrief.username
+        setConfiguredUserName(importedUsername)
+        saveConfiguration()
+        logMsg(
+          "Imported simbrief username '" ..
+            importedUsername .. "' from configuration file '" .. altConfigurationFilePath .. "'"
+        )
+        return importedUsername
+      end
+    end
+  end
+  return ""
 end
 
 local function getConfiguredFlightPlanDownloads()
@@ -611,8 +623,9 @@ local function performDefaultHttpGetRequest(url, resultCallback, errorCallback, 
   end
 end
 
-local function windowVisibilityToInitialMacroState(windowIsVisible)
+local function windowVisibilityToInitialMacroState(humanReadableWindowIdentifier, windowIsVisible)
   if windowIsVisible then
+    logMsg("Initially showing window '" .. humanReadableWindowIdentifier .. "'")
     return "activate"
   else
     return "deactivate"
@@ -1705,7 +1718,7 @@ add_macro(
   "Vatsimbrief Helper Flight Plan",
   "createVatsimbriefHelperFlightplanWindow()",
   "destroyVatsimbriefHelperFlightplanWindow()",
-  windowVisibilityToInitialMacroState(initiallyShowFlightPlanWindow())
+  windowVisibilityToInitialMacroState("Flight Plan", initiallyShowFlightPlanWindow())
 )
 
 --
@@ -2117,7 +2130,7 @@ add_macro(
   "Vatsimbrief Helper ATC",
   "createVatsimbriefHelperAtcWindow()",
   "destroyVatsimbriefHelperAtcWindow()",
-  windowVisibilityToInitialMacroState(initiallyShowAtcWindow())
+  windowVisibilityToInitialMacroState("ATC", initiallyShowAtcWindow())
 )
 
 --
@@ -2425,7 +2438,7 @@ add_macro(
   "Vatsimbrief Helper Control",
   "createVatsimbriefHelperControlWindow()",
   "destroyVatsimbriefHelperControlWindow()",
-  windowVisibilityToInitialMacroState(initiallyShowControlWindow())
+  windowVisibilityToInitialMacroState("Control", initiallyShowControlWindow())
 )
 
 --- Command bindings for opening / closing windows
