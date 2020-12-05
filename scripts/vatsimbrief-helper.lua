@@ -1872,7 +1872,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
   local atcIdentifiersUpdated =
     AtcWindowLastAtcIdentifiersUpdatedTimestamp ~= VatsimData.container.AtcIdentifiersUpdatedTimestamp
   local flightplanFetchStatusChanged =
-    AtcWindowLastRenderedSimbriefFlightplanFetchStatus ~= CurrentSimbriefFlightplanFetchStatus
+    FlightplanWindowLastRenderedSimbriefFlightplanFetchStatus ~= CurrentSimbriefFlightplanFetchStatus
   local vatsimDataFetchStatusChanged =
     AtcWindowLastRenderedVatsimDataFetchStatus ~= VatsimDataContainer.CurrentFetchStatus
   local selectedAtcFrequenciesChanged =
