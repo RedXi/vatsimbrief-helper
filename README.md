@@ -23,6 +23,7 @@ It solves major issues that VR pilots usually face:
 ## Usage
 
 * Create your flight plan on [Simbrief](https://www.simbrief.com/) as usual, at some time before takeoff.
+* If you already started the simulation but want to reload the flight plan due to late updates, open the `Vatsimbrief Helper Control` window as described below, and click `Reload Flight Plan Now`.
 * Windows can be toggled inside the plugins menu `Plugins / FlyWithLua / FlyWithLua Macros`:
   * `Vatsimbrief Helper Flight Plan`: Opens/closes a window showing a relevant excerpt of the flight plan.
   * `Vatsimbrief Helper ATC`: Opens/closes a window showing relevant ATC frequencies that will refresh every minute, if "Auto Refresh" is enabled.
