@@ -1015,6 +1015,11 @@ local SimbriefFlightplan = {}
 
 local FlightplanId = nil -- PK to spot that a file plan changed
 
+FlightPlan = {
+  AirlineIcao = "",
+  FlightNumber = 0
+}
+
 local FlightplanOriginIcao = ""
 local FlightplanOriginIata = ""
 local FlightplanOriginName = ""
@@ -1154,6 +1159,9 @@ local function processNewFlightplan(httpRequest)
       -- We just guess that this PK definition yields "enough uniqueness"
       if newFlightplanId ~= FlightplanId then -- Flightplan changed
         FlightplanId = newFlightplanId
+
+        FlightPlan.FlightNumber = SimbriefFlightplan.general.flight_number
+        FlightPlan.AirlineIcao = SimbriefFlightplan.general.icao_airline
 
         FlightplanOriginIcao = SimbriefFlightplan.origin.icao_code
         FlightplanOriginIata = SimbriefFlightplan.origin.iata_code
@@ -1461,6 +1469,7 @@ local FlightplanWindowTrack = ""
 local FlightplanWindowMetars = ""
 
 local FlightplanWindow = {
+  WindowHandle = nil,
   KeyWidth = 11, -- If changing this, also change max value length
   MaxValueLengthUntilBreak = 79, -- 90 characters minus keyWidth of 11
   FlightplanWindowValuePaddingLeft = "",
@@ -1471,6 +1480,18 @@ FlightplanWindow.FlightplanWindowValuePaddingLeft = string.rep(" ", FlightplanWi
 local FlightplanWindowLastRenderedSimbriefFlightplanFetchStatus = CurrentSimbriefFlightplanFetchStatus
 local FlightplanWindowFlightplanDownloadStatus = ""
 local FlightplanWindowFlightplanDownloadStatusColor = 0
+
+local function updateFlightPlanWindowTitle()
+  if FlightplanWindow.WindowHandle ~= nil then
+    -- Title also exists without the physical window, but for performance, only render if window exists
+    local title = "Vatsimbrief Helper Flight Plan"
+    if Globals.stringIsNotEmpty(FlightplanId) then
+      title = title .. " for flight " .. FlightPlan.AirlineIcao .. FlightPlan.FlightNumber
+    end
+
+    float_wnd_set_title(FlightplanWindow.WindowHandle, title)
+  end
+end
 
 local function createFlightplanTableEntry(name, value)
   return ("%-" .. FlightplanWindow.KeyWidth .. "s%s"):format(name .. ":", value)
@@ -1636,6 +1657,8 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
           ("\n%s%s"):format(FlightplanWindow.FlightplanWindowValuePaddingLeft, FlightplanAltMetar)
       end
       FlightplanWindowMetars = createFlightplanTableEntry("METARs", FlightplanWindowMetars)
+
+      updateFlightPlanWindowTitle()
     end
 
     FlightplanWindowLastRenderedSimbriefFlightplanFetchStatus = CurrentSimbriefFlightplanFetchStatus
@@ -1671,43 +1694,41 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
   end
 end
 
-local vatsimbriefHelperFlightplanWindow = nil
-
 function destroyVatsimbriefHelperFlightplanWindow()
-  if vatsimbriefHelperFlightplanWindow ~= nil then
+  if FlightplanWindow.WindowHandle ~= nil then
     setConfiguredFlightPlanWindowVisibility(false)
     saveConfiguration()
-    float_wnd_destroy(vatsimbriefHelperFlightplanWindow)
-    vatsimbriefHelperFlightplanWindow = nil
+    float_wnd_destroy(FlightplanWindow.WindowHandle)
+    FlightplanWindow.WindowHandle = nil
     trackWindowOpen("flight-plan", false)
   end
 end
 
 function createVatsimbriefHelperFlightplanWindow()
   LazyInitialization:tryVatsimbriefHelperInit()
-  if vatsimbriefHelperFlightplanWindow == nil then -- "Singleton window"
+  if FlightplanWindow.WindowHandle == nil then -- "Singleton window"
     setConfiguredFlightPlanWindowVisibility(true)
     saveConfiguration()
     refreshFlightplanNow()
     local scaling = getConfiguredFlightPlanFontScaleSettingDefault1()
-    vatsimbriefHelperFlightplanWindow = float_wnd_create(650 * scaling, 210 * scaling, 1, true)
-    float_wnd_set_title(vatsimbriefHelperFlightplanWindow, "Vatsimbrief Helper Flight Plan")
-    float_wnd_set_imgui_builder(vatsimbriefHelperFlightplanWindow, "buildVatsimbriefHelperFlightplanWindowCanvas")
-    float_wnd_set_onclose(vatsimbriefHelperFlightplanWindow, "destroyVatsimbriefHelperFlightplanWindow")
+    FlightplanWindow.WindowHandle = float_wnd_create(650 * scaling, 210 * scaling, 1, true)
+    updateFlightPlanWindowTitle()
+    float_wnd_set_imgui_builder(FlightplanWindow.WindowHandle, "buildVatsimbriefHelperFlightplanWindowCanvas")
+    float_wnd_set_onclose(FlightplanWindow.WindowHandle, "destroyVatsimbriefHelperFlightplanWindow")
     trackWindowOpen("flight-plan", true)
   end
 end
 
 function showVatsimbriefHelperFlightplanWindow(value)
-  if value and vatsimbriefHelperFlightplanWindow == nil then
+  if value and FlightplanWindow.WindowHandle == nil then
     createVatsimbriefHelperFlightplanWindow()
-  elseif not value and vatsimbriefHelperFlightplanWindow ~= nil then
+  elseif not value and FlightplanWindow.WindowHandle ~= nil then
     destroyVatsimbriefHelperFlightplanWindow()
   end
 end
 
 function toggleFlightPlanWindow(value)
-  showVatsimbriefHelperFlightplanWindow(vatsimbriefHelperFlightplanWindow == nil)
+  showVatsimbriefHelperFlightplanWindow(FlightplanWindow.WindowHandle == nil)
 end
 
 local function initiallyShowFlightPlanWindow()
@@ -1766,6 +1787,7 @@ local CHAR_WIDTH_PIXELS = 7
 local LINE_HEIGHT_PIXELS = 18
 
 local AtcWindow = {
+  WindowHandle = nil,
   WidthInCharacters = 67,
   FontScale = getConfiguredAtcFontScaleSettingDefault1(),
   Stations = nil,
@@ -1792,6 +1814,18 @@ local AtcWindowVatsimDataDownloadStatus = ""
 local AtcWindowVatsimDataDownloadStatusColor = 0
 local showVatsimDataIsDownloading = false
 local showVatsimDataIsDisabled = false
+
+function updateAtcWindowTitle()
+  if AtcWindow.WindowHandle ~= nil then
+    local title = ("Vatsimbrief Helper ATC (%s)"):format(os.date("!%H%MUTC")) -- '!' means "give me ZULU"
+    if Globals.stringIsNotEmpty(FlightplanCallsign) then -- TODO: No, condition is, FlightPlanId is not empty, like in updateFlightplanWindowTitle()
+      title = title .. " for " .. FlightplanCallsign
+    end
+    float_wnd_set_title(AtcWindow.WindowHandle, title)
+  end
+end
+
+do_sometimes("updateAtcWindowTitle()") -- Update time in title
 
 local function stationToNameFrequencyArray(info)
   local shortId
@@ -2069,57 +2103,43 @@ function buildVatsimbriefHelperAtcWindowCanvas()
   end
 end
 
-local vatsimbriefHelperAtcWindow = nil
-
-function updateAtcWindowTitle()
-  if vatsimbriefHelperAtcWindow ~= nil then
-    local title = ("Vatsimbrief Helper ATC (%s)"):format(os.date("!%H%MUTC")) -- '!' means "give me ZULU"
-    if Globals.stringIsNotEmpty(FlightplanCallsign) then
-      title = title .. " for " .. FlightplanCallsign
-    end
-    float_wnd_set_title(vatsimbriefHelperAtcWindow, title)
-  end
-end
-
-do_sometimes("updateAtcWindowTitle()")
-
 function destroyVatsimbriefHelperAtcWindow()
-  if vatsimbriefHelperAtcWindow ~= nil then
+  if AtcWindow.WindowHandle ~= nil then
     setConfiguredAtcWindowVisibility(false)
     saveConfiguration()
-    float_wnd_destroy(vatsimbriefHelperAtcWindow)
-    vatsimbriefHelperAtcWindow = nil
+    float_wnd_destroy(AtcWindow.WindowHandle)
+    AtcWindow.WindowHandle = nil
     trackWindowOpen("atc", false)
   end
 end
 
 function createVatsimbriefHelperAtcWindow()
   LazyInitialization:tryVatsimbriefHelperInit()
-  if vatsimbriefHelperAtcWindow == nil then -- "Singleton window"
+  if AtcWindow.WindowHandle == nil then -- "Singleton window"
     setConfiguredAtcWindowVisibility(true)
     refreshVatsimDataNow()
     saveConfiguration()
     local scaling = getConfiguredAtcFontScaleSettingDefault1()
     local windowWidth = CHAR_WIDTH_PIXELS * AtcWindow.WidthInCharacters * scaling + 10
     local windowHeight = LINE_HEIGHT_PIXELS * 5 * scaling + 5
-    vatsimbriefHelperAtcWindow = float_wnd_create(windowWidth, windowHeight, 1, true)
+    AtcWindow.WindowHandle = float_wnd_create(windowWidth, windowHeight, 1, true)
     updateAtcWindowTitle()
-    float_wnd_set_imgui_builder(vatsimbriefHelperAtcWindow, "buildVatsimbriefHelperAtcWindowCanvas")
-    float_wnd_set_onclose(vatsimbriefHelperAtcWindow, "destroyVatsimbriefHelperAtcWindow")
+    float_wnd_set_imgui_builder(AtcWindow.WindowHandle, "buildVatsimbriefHelperAtcWindowCanvas")
+    float_wnd_set_onclose(AtcWindow.WindowHandle, "destroyVatsimbriefHelperAtcWindow")
     trackWindowOpen("atc", true)
   end
 end
 
 function showVatsimbriefHelperAtcWindow(value)
-  if value and vatsimbriefHelperAtcWindow == nil then
+  if value and AtcWindow.WindowHandle == nil then
     createVatsimbriefHelperAtcWindow()
-  elseif not value and vatsimbriefHelperAtcWindow ~= nil then
+  elseif not value and AtcWindow.WindowHandle ~= nil then
     destroyVatsimbriefHelperAtcWindow()
   end
 end
 
 function toggleAtcWindow(value)
-  showVatsimbriefHelperAtcWindow(vatsimbriefHelperAtcWindow == nil)
+  showVatsimbriefHelperAtcWindow(AtcWindow.WindowHandle == nil)
 end
 
 local function initiallyShowAtcWindow()
