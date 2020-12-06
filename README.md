@@ -30,7 +30,7 @@ It solves major issues that VR pilots usually face:
 * If an attribute has two values separated by `/`, the left value refers to the **destination** and the right one to the **alternate**
 * If you find that the font in a window is too small, scale it up by dragging the bottom right corner of each window. If you permanently want to adjust the font size, there's a setting in the settings menu. The window will automatically adjust to the configured font size the next time it opens.
 * Note that the visibility of windows will be saved between sessions. To restore a window, reopen it manually in the menu `Plugins / FlyWithLua / FlyWithLua Macros`.
-* Window visibility can also be controlled by commands:
+* Window can also be toggled with hotkeys using the following commands:
   + `FlyWithLua/Vatsimbrief Helper/ToggleWindows`: Toggles all windows on/off.
   + `FlyWithLua/Vatsimbrief Helper/ToggleFlightPlanWindow`: Toggles the flight plan window.
   + `FlyWithLua/Vatsimbrief Helper/ToggleAtcWindow`: Toggles the ATC window.
