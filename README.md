@@ -62,9 +62,13 @@ The plugin is not going to become another FMC. It's meant to provide the pilot w
 
 Sure. One can close the ATC window in the menu at `Plugins / FlyWithLua / FlyWithLua Macros` and only use the precious flight plan information. On the other hand, only using VATSIM without Simbrief does not make sense as the output of the ATC window is based on an active flight plan.
 
-## Feedback
+## Contact
 
-You're welcome to provide feedback or report issues on [gitlab](https://github.com/RedXi/vatsimbrief-helper).
+You're always welcome to provide feedback.
+
+* **Issues:** If something does not work as expected, please create an issue on [gitlab](https://github.com/RedXi/vatsimbrief-helper/issues).
+* **Comments or Feature Requests:** Leave comments or feature requests on [X-Plane.org](https://forums.x-plane.org/index.php?/files/file/66522-vatsimbrief-helper/&tab=comments).
+* **Reviews:** If you like this tool, support its further development by leaving a review on [X-Plane.org](https://forums.x-plane.org/index.php?/files/file/66522-vatsimbrief-helper/&tab=reviews).
 
 ## Public Interface
 
