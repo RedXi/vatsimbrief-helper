@@ -1048,6 +1048,7 @@ local FlightplanEstOff = 0
 local FlightplanEstOn = 0
 local FlightplanEstIn = 0
 local FlightplanEstBlock = 0
+local FlightplanEstAir = 0
 
 local FlightplanAltitude = 0
 local FlightplanAltAltitude = 0
@@ -1194,6 +1195,7 @@ local function processNewFlightplan(httpRequest)
         FlightplanEstOn = tonumber(SimbriefFlightplan.times.est_on)
         FlightplanEstIn = tonumber(SimbriefFlightplan.times.est_in)
         FlightplanEstBlock = tonumber(SimbriefFlightplan.times.est_block)
+        FlightplanEstEnroute = tonumber(SimbriefFlightplan.times.est_time_enroute)
 
         -- TOC waypoint is identified by "TOC"
         -- It seems flightplans w/o route are also possible to create.
@@ -1580,12 +1582,13 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
 
       local timeFormat = "%I:%M%p"
       FlightplanWindowSchedule =
-        ("OUT=%s OFF=%s BLOCK=%s ON=%s IN=%s"):format(
-        os.date("!%I:%M%p", FlightplanEstOut),
-        os.date("!%I:%M%p", FlightplanEstOn),
+        ("BLOCK=%s OUT=%s OFF=%s ENROUTE=%s ON=%s IN=%s"):format(
         durationSecsToCeiledHHMM(FlightplanEstBlock),
-        os.date("!%I:%M%p", FlightplanEstIn),
-        os.date("!%I:%M%p", FlightplanEstBlock)
+        os.date("!%I:%M%p", FlightplanEstOut),
+        os.date("!%I:%M%p", FlightplanEstOff),
+        durationSecsToCeiledHHMM(FlightplanEstEnroute),
+        os.date("!%I:%M%p", FlightplanEstOn),
+        os.date("!%I:%M%p", FlightplanEstIn)
       )
       FlightplanWindowSchedule = createFlightplanTableEntry("Schedule", FlightplanWindowSchedule)
 
