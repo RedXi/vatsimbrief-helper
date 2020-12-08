@@ -68,11 +68,11 @@ M.IO = {
     }
 }
 
-TRACK_ISSUE(
-    "Boilerplate/Tech Debt",
-    "LuaPlatform.IO does not support object handles, only objects.",
-    "Ignore that for now."
-)
+-- TRACK_ISSUE(
+--     "Boilerplate/Tech Debt",
+--     "LuaPlatform.IO does not support object handles, only objects.",
+--     "Ignore that for now."
+-- )
 -- local IoObject
 -- do
 --     IoObject = {}
@@ -106,7 +106,7 @@ TRACK_ISSUE(
 --     end
 -- end
 
-TRACK_ISSUE("Boilerplate/Tech Debt", "LuaPlatform.IO is not yet implemented, but wasting space.", "But ...")
+-- TRACK_ISSUE("Boilerplate/Tech Debt", "LuaPlatform.IO is not yet implemented, but wasting space.", "But ...")
 -- M.IO.overrideObjectContent = function(ioPath, newContent)
 --     if (M.IO.ioObjects[ioPath] == nil) then
 --         M.IO.ioObjects[ioPath]:_overrideContent(newContent)

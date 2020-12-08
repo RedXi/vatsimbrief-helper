@@ -1,2 +1,5 @@
 LOCAL_ENVIRONMENT_CONFIGURATION.cmd
 TEMP
+release_commit_hash.txt
+release_tag.txt
+known_issues_url_encoded.txt

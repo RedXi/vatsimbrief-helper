@@ -27,10 +27,15 @@ local eventBusStub = {}
 
 function eventBusStub.new()
 	local bus = {
-		eventsEmittedSoFar = {}
+		eventsEmittedSoFar = {},
+		handlers = {}
 	}
 
 	bus.on = function(event, handler, index)
+		if (bus.handlers[event] == nil) then
+			bus.handlers[event] = {}
+		end
+		table.insert(bus.handlers[event], handler)
 	end
 
 	bus.off = function(event, handler)
@@ -38,6 +43,14 @@ function eventBusStub.new()
 
 	bus.emit = function(event, ...)
 		table.insert(bus.eventsEmittedSoFar, event)
+		local handlers = bus.handlers[event]
+		if (handlers == nil) then
+			return
+		end
+
+		for _, handler in ipairs(handlers) do
+			handler(...)
+		end
 	end
 
 	return bus

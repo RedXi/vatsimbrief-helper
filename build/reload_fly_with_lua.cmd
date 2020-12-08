@@ -1,5 +1,6 @@
 @echo off
 call .\build\configure_environment.cmd
+if %ERRORLEVEL% NEQ 0 exit /B %ERRORLEVEL%
 
 set TASK_OUTPUT_FILENAME=%TASK_OUTPUT_FOLDER_PATH%\buildAndReloadFlyWithLua.txt
 
@@ -38,4 +39,4 @@ if %DEV_MODE_SETTING%==0 (
 )
 
 set ERRORLEVEL=0
-exit(0)
+exit /B %ERRORLEVEL%

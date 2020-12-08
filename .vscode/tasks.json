@@ -94,7 +94,10 @@
                 "showReuseMessage": false,
                 "clear": true
             },
-            "group": "build",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
             "problemMatcher": []
         },
         {
