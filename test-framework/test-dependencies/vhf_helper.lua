@@ -1,3 +1,5 @@
+EventBus = require("eventbus")
+
 local vhfHelperStub = {
 	frequencies = {
 		tunedInCom1 = nil,
@@ -42,5 +44,8 @@ VHFHelperPublicInterface = {
 		return vhfHelperStub.validator(fullFrequencyString)
 	end
 }
+
+VHFHelperEventOnFrequencyChanged = "EventBus_EventName_VHFHelperEventOnFrequencyChanged"
+VHFHelperEventBus = EventBus.new()
 
 return vhfHelperStub

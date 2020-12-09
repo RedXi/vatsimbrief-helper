@@ -131,6 +131,7 @@ do
             if (skipDistance <= 0) then
                 imgui.TextUnformatted("")
                 imgui.TextUnformatted("!BLOB corrupted, invalid skip distance!")
+                break
             end
 
             index = index + skipDistance

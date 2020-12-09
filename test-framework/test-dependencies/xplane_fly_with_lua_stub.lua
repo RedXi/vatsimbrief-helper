@@ -25,6 +25,7 @@ SOFTWARE.
 --]]
 local luaUnit = require("luaunit")
 local imguiStub = require("imgui_stub")
+local Utilities = require("utilities")
 
 SCRIPT_DIRECTORY = os.getenv("TEMP_TEST_SCRIPT_FOLDER") .. "\\"
 
@@ -91,6 +92,9 @@ function logMsg(stringToLog)
         end
     end
 
+    if (stringToLog == "" or stringToLog == "\n") then
+        print(tostring(Utilities.getOccurrenceLocation(3)) .. " is logging an empty string or just a newline.")
+    end
     print("[7m" .. stringToLog .. "[0m")
 end
 

@@ -4,5 +4,4 @@ local VatsimData = VatsimDataContainer:new()
 
 local M = {}
 M.container = VatsimData
-M.refreshVatsimDataNow = refreshVatsimDataNow
 return M

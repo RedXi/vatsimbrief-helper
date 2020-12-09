@@ -1,5 +1,6 @@
 @echo off
 call .\build\configure_environment.cmd
+if %ERRORLEVEL% NEQ 0 exit /B %ERRORLEVEL%
 
 set TEMP_TEST_SCRIPT_FOLDER=.\TEMP\TEST_RUN
 

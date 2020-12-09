@@ -2268,7 +2268,8 @@ function buildVatsimbriefHelperControlWindowCanvas()
     imgui.TextUnformatted("  ")
     imgui.SameLine()
     if imgui.Button(" Refresh ATC Data Now ") then
-      VatsimData:clear()
+      TRACK_ISSUE("Tech Debt", "No test is covering this part. Stubs for copas/HTTP are still mising.")
+      VatsimData.container:clear()
       refreshVatsimDataNow()
     end
     imgui.SameLine()

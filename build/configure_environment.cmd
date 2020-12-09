@@ -51,6 +51,16 @@ if not exist %TASK_OUTPUT_FOLDER_PATH% (
     mkdir %TASK_OUTPUT_FOLDER_PATH%
 )
 
+setlocal enabledelayedexpansion
+
+set DEFAULT_RELEASE_FILE_NAME_PREFIX_WITHOUT_QUOTES=%DEFAULT_RELEASE_FILE_NAME_PREFIX:"=%
+set DEFAULT_READABLE_SCRIPT_NAME_WITHOUT_QUOTES=%DEFAULT_READABLE_SCRIPT_NAME:"=%
+
+@REM echo Release file name prefix: %RELEASE_FILE_NAME_PREFIX% ^| Readable script name: %READABLE_SCRIPT_NAME%
+
+if !RELEASE_FILE_NAME_PREFIX!==!DEFAULT_RELEASE_FILE_NAME_PREFIX_WITHOUT_QUOTES! goto :label_prompt_update_build_configuration
+if !READABLE_SCRIPT_NAME!==!DEFAULT_READABLE_SCRIPT_NAME_WITHOUT_QUOTES! goto :label_prompt_update_build_configuration
+
 goto :label_end
 
     :label_append_to_local_configuration
@@ -63,4 +73,16 @@ goto :label_end
         del LOCAL_ENVIRONMENT_CONFIGURATION.cmd
         goto :label_regenerate_local_environment
 
+    :label_prompt_update_build_configuration
+        echo Your current build configuration still contains [93mdefault values[0m.
+        echo To correctly copy script files to X-Plane, pack release packages or reload FlyWithLua,
+        echo update project name and release file name in [94m.\build_configuration.cmd[0m
+        set ERRORLEVEL=1
+        goto :label_configure_error
+
+    :label_configure_error
+        echo [91mConfiguring your local environment failed[0m.
+        goto :label_end
+
 :label_end
+exit /B %ERRORLEVEL%
