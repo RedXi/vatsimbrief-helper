@@ -1499,12 +1499,12 @@ local function createFlightplanTableEntry(name, value)
   return ("%-" .. FlightplanWindow.KeyWidth .. "s%s"):format(name .. ":", value)
 end
 
-function durationSecsToCeiledHHMM(s)
+function durationSecsToHHMM(s)
   s = tonumber(s)
 
   local hrs = math.floor(s / (60 * 60))
   s = s % (60 * 60)
-  local mins = math.ceil(s / 60)
+  local mins = math.floor(s / 60)
   return ("%02d:%02d"):format(hrs, mins)
 end
 
@@ -1583,10 +1583,10 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
       local timeFormat = "%I:%M%p"
       FlightplanWindowSchedule =
         ("BLOCK=%s OUT=%s OFF=%s ENROUTE=%s ON=%s IN=%s"):format(
-        durationSecsToCeiledHHMM(FlightplanEstBlock),
+        durationSecsToHHMM(FlightplanEstBlock),
         os.date("!%I:%M%p", FlightplanEstOut),
         os.date("!%I:%M%p", FlightplanEstOff),
-        durationSecsToCeiledHHMM(FlightplanEstEnroute),
+        durationSecsToHHMM(FlightplanEstEnroute),
         os.date("!%I:%M%p", FlightplanEstOn),
         os.date("!%I:%M%p", FlightplanEstIn)
       )
@@ -1631,7 +1631,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
           ("DIST=%d/%d BLOCKTIME=%s CI=%d WINDDIR=%d WINDSPD=%d"):format(
           FlightplanDistance,
           FlightplanAltDistance,
-          durationSecsToCeiledHHMM(FlightplanEstBlock),
+          durationSecsToHHMM(FlightplanEstBlock),
           FlightplanCostindex,
           FlightplanAvgWindDir,
           FlightplanAvgWindSpeed
@@ -1640,7 +1640,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
         FlightplanWindowTrack =
           ("DIST=%d BLOCKTIME=%s CI=%d WINDDIR=%d WINDSPD=%d"):format(
           FlightplanDistance,
-          durationSecsToCeiledHHMM(FlightplanEstBlock),
+          durationSecsToHHMM(FlightplanEstBlock),
           FlightplanCostindex,
           FlightplanAvgWindDir,
           FlightplanAvgWindSpeed
