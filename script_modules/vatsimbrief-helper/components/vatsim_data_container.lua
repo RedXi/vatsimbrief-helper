@@ -56,7 +56,7 @@ do
 
     self.AtcIdentifiersUpdatedTimestamp = os.clock()
     self.CurrentFetchStatus = VatsimDataContainer.FetchStatus.NO_ERROR
-    MainThread.emitVatsimDataUpdateEvent()MainThread.emitVatsimDataUpdateEvent()
+    MainThread.emitVatsimDataUpdateEvent()
   end
 
   function VatsimDataContainer:getAtcStationsForFrequencyClosestFirst(fullFrequencyString)
