@@ -1786,7 +1786,7 @@ end
 -- ATC UI handling
 --
 
-local CHAR_WIDTH_PIXELS = 7
+local CHAR_WIDTH_PIXELS = 8
 local LINE_HEIGHT_PIXELS = 18
 
 local AtcWindow = {
