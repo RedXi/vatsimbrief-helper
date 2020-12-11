@@ -37,6 +37,9 @@ imgui = {
         Col = {Text = "Text", Button = "Button", Separator = "Separator"}
     },
     Constants = {
+        DrawList_AddImage = "DrawList_AddImage",
+        DrawList_AddImageQuad = "DrawList_AddImageQuad",
+        Image = "Image",
         Button = "Button",
         SmallButton = "SmallButton",
         TextUnformatted = "TextUnformatted",
@@ -47,9 +50,48 @@ imgui = {
         InputText = "InputText",
         SliderFloat = "SliderFloat",
         Checkbox = "Checkbox",
-        SetCursorPos = "SetCursorPos"
+        SetCursorPos = "SetCursorPos",
+        PushClipRect = "PushClipRect",
+        PopClipRect = "PopClipRect",
+        DrawList_AddCircle = "DrawList_AddCircle"
     },
     LastFrameCommandList = {},
+    DrawList_AddImageQuad = function(
+        imageId,
+        topLeftX,
+        topLeftY,
+        topRightX,
+        topRightY,
+        bottomRightX,
+        bottomRightY,
+        bottomLeftX,
+        bottomLeftY,
+        topLeftU,
+        topLeftV,
+        topRightU,
+        topRightV,
+        bottomRightU,
+        bottomRightV,
+        bottomLeftU,
+        bottomLeftV,
+        color)
+        table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.DrawList_AddImageQuad})
+    end,
+    PushClipRect = function(x, y, width, height)
+        table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.PushClipRect})
+    end,
+    PopClipRect = function()
+        table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.PopClipRect})
+    end,
+    DrawList_AddCircle = function(centerX, centerY, radius, color, numSegments, thickness)
+        table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.DrawList_AddCircle})
+    end,
+    DrawList_AddImage = function(imageId, top, left, right, bottom, uv0x, uv0y, uv1x, uv1y, someColor)
+        table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.DrawList_AddImage})
+    end,
+    Image = function(imageId, size, uv0x, uv0y, uv1x, uv1y, blaColor, blaColor2, blaColor3, blaColor4)
+        table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.Image})
+    end,
     SetCursorPos = function(x, y)
         table.insert(imgui.LastFrameCommandList, {type = imgui.Constants.SetCursorPos})
     end,

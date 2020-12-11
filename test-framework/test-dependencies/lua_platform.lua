@@ -59,11 +59,11 @@ M.Time = {
 }
 
 M.IO = {
-    -- ioObjects = {},
     Constants = {
         Modes = {
             Overwrite = "w",
-            Read = "r"
+            Read = "r",
+            Binary = "b"
         }
     }
 }
@@ -125,7 +125,6 @@ M.IO = {
 
 M.IO.open = function(ioPath, mode)
     assert(ioPath)
-    assert(mode == M.IO.Constants.Modes.Overwrite or mode == M.IO.Constants.Modes.Read)
     -- if (mode == M.IO.Constants.Modes.Overwrite) then
     --     M.IO.overrideObjectContent(ioPath, nil)
     -- elseif (mode == M.IO.Constants.Modes.Read) then
