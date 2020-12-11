@@ -43,6 +43,25 @@ function TestVatsimDataContainer:_findAtcInfoById(atcInfos, stationId)
     return nil
 end
 
+function TestVatsimDataContainer:_findClientByTypeAndName(allVatsimClients, clientType, clientName)
+    for _, client in ipairs(allVatsimClients) do
+        if
+            (client.type == VatsimDataContainer.ClientType.PLANE and clientType == VatsimDataContainer.ClientType.PLANE and
+                client.callSign == clientName)
+         then
+            return client
+        end
+
+        if
+            (client.type == VatsimDataContainer.ClientType.STATION and
+                clientType == VatsimDataContainer.ClientType.STATION and
+                client.id == clientName)
+         then
+            return client
+        end
+    end
+end
+
 function TestVatsimDataContainer:testAtcInfoTableIsCorrect()
     local tsid = "MUFH_G_CTR"
     local atcInfo = self:_findAtcInfoById(self.VatsimData.MapAtcIdentifiersToAtcInfo, tsid)
@@ -55,6 +74,28 @@ function TestVatsimDataContainer:testAtcInfoTableIsCorrect()
     )
     luaUnit.assertEquals(atcInfo.latitude, tonumber("21.99509"))
     luaUnit.assertEquals(atcInfo.longitude, tonumber("-83.83585"))
+end
+
+function TestVatsimDataContainer:testClientInfoTableIsCorrect()
+    local station =
+        self:_findClientByTypeAndName(
+        self.VatsimData.AllVatsimClients,
+        VatsimDataContainer.ClientType.STATION,
+        "SCEL_ATIS"
+    )
+    luaUnit.assertEquals(station.id, "SCEL_ATIS")
+    luaUnit.assertEquals(station.frequency, "132.700")
+    luaUnit.assertEquals(station.latitude, "-33.39444")
+    luaUnit.assertEquals(station.longitude, "-70.7938")
+
+    local plane =
+        self:_findClientByTypeAndName(self.VatsimData.AllVatsimClients, VatsimDataContainer.ClientType.PLANE, "RYR14")
+    luaUnit.assertEquals(plane.callSign, "RYR14")
+    luaUnit.assertEquals(plane.latitude, "54.65995")
+    luaUnit.assertEquals(plane.longitude, "-6.21772")
+    luaUnit.assertEquals(plane.altitude, "234")
+    luaUnit.assertEquals(plane.heading, "245")
+    luaUnit.assertEquals(plane.groundSpeed, "0")
 end
 
 function TestVatsimDataContainer:testAtcInfosPerFrequencyAreCorrect()
@@ -102,4 +143,13 @@ function TestVatsimDataContainer:testDuplicateFrequenciesAreSortedByCurrentDista
     luaUnit.assertEquals(atcInfos[2].id, CordobaApproach)
     luaUnit.assertEquals(atcInfos[3].id, CordobaControl)
     luaUnit.assertEquals(atcInfos[4].id, LisbonApproach)
+end
+
+function TestVatsimDataContainer:testClientsAreSortedByCurrentDistance()
+    local cs = self.VatsimData.AllVatsimClients
+    local lastD = 0.0
+    for _, client in ipairs(cs) do
+        luaUnit.assertTrue(client.currentDistance >= lastD)
+        lastD = client.currentDistance
+    end
 end
