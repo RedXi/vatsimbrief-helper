@@ -232,8 +232,8 @@ do
   end
 
   function VatsimDataContainer:_sortStationsForFrequencyByCurrentDistance()
-    local lat = CurrentLatitudeReadDataref
-    local lon = CurrentLongitudeReadDataref
+    local lat = VatsimbriefHelperCurrentLatitudeReadDataref
+    local lon = VatsimbriefHelperCurrentLongitudeReadDataref
 
     for _, atcInfo in ipairs(self.MapAtcIdentifiersToAtcInfo) do
       VatsimDataContainer._computeAndStoreCurrentDistanceForObject(atcInfo, lat, lon)
@@ -245,8 +245,8 @@ do
   end
 
   function VatsimDataContainer:_sortAllClientsByCurrentDistance()
-    local lat = CurrentLatitudeReadDataref
-    local lon = CurrentLongitudeReadDataref
+    local lat = VatsimbriefHelperCurrentLatitudeReadDataref
+    local lon = VatsimbriefHelperCurrentLongitudeReadDataref
 
     for _, client in ipairs(self.AllVatsimClients) do
       VatsimDataContainer._computeAndStoreCurrentDistanceForObject(client, lat, lon)
