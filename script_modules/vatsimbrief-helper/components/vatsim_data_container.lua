@@ -127,7 +127,9 @@ do
               linesWithoutDescription = linesWithoutDescription + 1
             end
 
+            local hasPosition = false
             if (not Globals.stringIsEmpty(newLatitude) and not Globals.stringIsEmpty(newLongitude)) then
+              hasPosition = true
               local latNum = tonumber(newLatitude)
               local lonNum = tonumber(newLongitude)
               if (latNum == 0.0 or lonNum == 0.0) then
@@ -149,15 +151,17 @@ do
             local atcInfos = self.MapAtcFrequenciesToAtcInfos[newFrequency]
             table.insert(atcInfos, newAtcInfo)
 
-            local newClient = {
-              type = VatsimDataContainer.ClientType.STATION,
-              id = newId,
-              vatsimClientId = newVatsimClientId,
-              frequency = newFrequency,
-              latitude = newLatitude,
-              longitude = newLongitude
-            }
-            table.insert(self.AllVatsimClients, newClient)
+            if (hasPosition) then
+              local newClient = {
+                type = VatsimDataContainer.ClientType.STATION,
+                id = newId,
+                vatsimClientId = newVatsimClientId,
+                frequency = newFrequency,
+                latitude = newLatitude or "0.0",
+                longitude = newLongitude or "0.0"
+              }
+              table.insert(self.AllVatsimClients, newClient)
+            end
           else
             linesWithoutIdOrFrequency = linesWithoutIdOrFrequency + 1
           end
