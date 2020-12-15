@@ -73,4 +73,4 @@ You're always welcome to provide feedback.
 
 ## Public Interface
 
-Vatsimbrief Helper offers a public interface to other scripts. For more information, see [Vatsimbrief Helper Public Interface](PUBLIC-INTERFACE.md). At the moment, [VR Radio Helper](https://github.com/VerticalLongboard/xplane-vhf-helper/) uses the Vatsimbrief Helper ATC data to display station names.
+Vatsimbrief Helper offers a public interface to other scripts. For more information, see [Vatsimbrief Helper Public Interface](PUBLIC-INTERFACE.md). At the moment, [VR Radio Helper](https://github.com/VerticalLongboard/xplane-vhf-helper/) uses the Vatsimbrief Helper ATC data to display station names and Vatsim clients in a Radar panel.
