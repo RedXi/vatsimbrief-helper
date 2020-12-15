@@ -36,6 +36,7 @@ vatsimClients = {
     -- Planes have a callSign
     type = "Plane",
     callSign = "OWN_CALLSIGN", -- To find out if a plane is your own plane, use getOwnCallSign(), see below
+    vatsimClientId = "23895389539"
     latitude = "6.1708",
     longitude = "-75.4276",
     altitude = "39000.0",
@@ -46,6 +47,7 @@ vatsimClients = {
   {
     type = "Plane",
     callSign = "DLH53N",
+    vatsimClientId = "3252352323"
     latitude = "8.0",
     longitude = "-76.0",
     altitude = "24000.0", 
@@ -56,6 +58,7 @@ vatsimClients = {
   {
     type = "Plane",
     callSign = "DLH62X",
+    vatsimClientId = "215476763534"
     latitude = "7.0",
     longitude = "-76.0",
     altitude = "13000.0",
@@ -68,6 +71,7 @@ vatsimClients = {
     -- Stations have a id
     type = "Station",
     id = "SKRG_APP",
+    vatsimClientId = "884848237"
     latitude = "5.0",
     longitude = "-75.0",
     frequency = "118.000",
