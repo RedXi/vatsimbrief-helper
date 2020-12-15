@@ -79,7 +79,7 @@ vatsimClients = {
 `getOwnCallSign` returns your own callsign as filed in Simbrief:
 ```text
 ownCallSign = VatsimbriefHelperPublicInterface.getOwnCallSign()
-...
+```
 
 ```text
 ownCallSign = "OWN_CALLSIGN"
