@@ -29,7 +29,7 @@ local vatsimClients, timestamp = VatsimbriefHelperPublicInterface.getAllVatsimCl
 
 `getAllVatsimClientsClosestFirstWithTimestamp` returns a distance-sorted list of all Vatsim clients:
 ```text
-timestamp = { 22342.343} -- os.clock() at the time Vatsim data was updated
+timestamp = { 22342.343 } -- os.clock() at the time Vatsim data was updated
 vatsimClients = {
   {
     -- Planes have altitude, heading and groundSpeed
