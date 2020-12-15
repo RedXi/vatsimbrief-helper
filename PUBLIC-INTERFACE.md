@@ -83,7 +83,7 @@ ownCallSign = VatsimbriefHelperPublicInterface.getOwnCallSign()
 
 ```text
 ownCallSign = "OWN_CALLSIGN"
-...
+```
 
 Use the `VatsimbriefHelperEventOnVatsimDataRefreshed` event to listen to ATC data updates:
 ```text
