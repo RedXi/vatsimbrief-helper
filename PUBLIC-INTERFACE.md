@@ -47,7 +47,7 @@ vatsimClients = {
   {
     type = "Plane",
     callSign = "DLH53N",
-    vatsimClientId = "3252352323"
+    vatsimClientId = "3252352323",
     latitude = "8.0",
     longitude = "-76.0",
     altitude = "24000.0", 
@@ -58,7 +58,7 @@ vatsimClients = {
   {
     type = "Plane",
     callSign = "DLH62X",
-    vatsimClientId = "215476763534"
+    vatsimClientId = "215476763534",
     latitude = "7.0",
     longitude = "-76.0",
     altitude = "13000.0",
@@ -71,7 +71,7 @@ vatsimClients = {
     -- Stations have a id
     type = "Station",
     id = "SKRG_APP",
-    vatsimClientId = "884848237"
+    vatsimClientId = "884848237",
     latitude = "5.0",
     longitude = "-75.0",
     frequency = "118.000",
