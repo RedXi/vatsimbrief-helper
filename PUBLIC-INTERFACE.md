@@ -36,7 +36,7 @@ vatsimClients = {
     -- Planes have a callSign
     type = "Plane",
     callSign = "OWN_CALLSIGN", -- To find out if a plane is your own plane, use getOwnCallSign(), see below
-    vatsimClientId = "23895389539"
+    vatsimClientId = "23895389539",
     latitude = "6.1708",
     longitude = "-75.4276",
     altitude = "39000.0",
