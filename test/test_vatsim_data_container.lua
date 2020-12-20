@@ -1,6 +1,7 @@
 local Globals = require("vatsimbrief-helper.globals")
 local VatsimDataContainer = require("vatsimbrief-helper.components.vatsim_data_container")
 local flyWithLuaStub = require("xplane_fly_with_lua_stub")
+local Utilities = require("test_utilities")
 
 TestVatsimDataContainer = {}
 
@@ -9,11 +10,11 @@ function TestVatsimDataContainer:setUp()
     self.VatsimData = self:getFreshTestVatsimDataContainer()
 end
 
-function TestVatsimDataContainer:getFreshTestVatsimDataContainer()
+function TestVatsimDataContainer:getFreshTestVatsimDataContainer(sourceVatsimDataTxtOrNil)
     local newContainer = VatsimDataContainer:new()
     local dummyHttpRequest = {
         httpStatusCode = 200,
-        responseBody = Globals.readAllContentFromFile("test/test-vatsim-data.txt")
+        responseBody = Globals.readAllContentFromFile(sourceVatsimDataTxtOrNil or "test/test-vatsim-data.txt")
     }
 
     local beforeTime = os.clock()
@@ -31,6 +32,49 @@ function TestVatsimDataContainer:getFreshTestVatsimDataContainer()
     )
 
     return newContainer
+end
+
+if (false) then
+    function TestVatsimDataContainer:testGenerateCrowdedTestData()
+        dataref("VatsimbriefHelperCurrentLatitudeReadDataref", "sim/flightmodel/position/latitude", "readable")
+        dataref("VatsimbriefHelperCurrentLongitudeReadDataref", "sim/flightmodel/position/longitude", "readable")
+
+        local eddmPos = {48.3537, 11.7751}
+
+        local latDataref = flyWithLuaStub.datarefs["sim/flightmodel/position/latitude"]
+        local lonDataref = flyWithLuaStub.datarefs["sim/flightmodel/position/longitude"]
+
+        latDataref.data = eddmPos[1]
+        lonDataref.data = eddmPos[2]
+
+        local crowdedContainer = self:getFreshTestVatsimDataContainer("test/test-vatsim-data-europe-crowded.txt")
+
+        local outputText = "local allVatsimClientsWhenEuropeIsCrowded = {\n"
+        for _, c in ipairs(crowdedContainer.AllVatsimClients) do
+            outputText = outputText .. "\t{\n"
+            outputText = outputText .. '\t\ttype = "' .. c.type .. '",\n'
+            if (c.type == "Plane") then
+                outputText = outputText .. '\t\tcallSign = "' .. c.callSign .. '",\n'
+                outputText = outputText .. '\t\taltitude = "' .. c.altitude .. '",\n'
+                outputText = outputText .. '\t\tgroundSpeed = "' .. c.groundSpeed .. '",\n'
+                outputText = outputText .. '\t\theading = "' .. c.heading .. '",\n'
+            else
+                outputText = outputText .. '\t\tid = "' .. c.id .. '",\n'
+                outputText = outputText .. '\t\tfrequency = "' .. c.frequency .. '",\n'
+            end
+
+            outputText = outputText .. '\t\tvatsimClientId = "' .. c.vatsimClientId .. '",\n'
+            outputText = outputText .. '\t\tlatitude = "' .. c.latitude .. '",\n'
+            outputText = outputText .. '\t\tlongitude = "' .. c.longitude .. '",\n'
+            outputText = outputText .. "\t\tcurrentDistance = " .. c.currentDistance .. ",\n"
+
+            outputText = outputText .. "\t},\n"
+        end
+        outputText = outputText .. "}\n"
+        outputText = outputText .. "return allVatsimClientsWhenEuropeIsCrowded"
+
+        Utilities.overwriteContentInFile("test/allVatsimClientsWhenEuropeIsCrowded.lua", outputText)
+    end
 end
 
 function TestVatsimDataContainer:_findAtcInfoById(atcInfos, stationId)

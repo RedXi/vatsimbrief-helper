@@ -12,10 +12,11 @@ vatsimbriefHelperStub.frequencyToAtcInfosMap["129.200"] = {
 
 vatsimbriefHelperStub.ownCallSign = "THATSME"
 
-vatsimbriefHelperStub.testVatsimClients = {
+vatsimbriefHelperStub.defaultTestVatsimClients = {
     {
         type = "Plane",
         callSign = vatsimbriefHelperStub.ownCallSign,
+        vatsimClientId = "23895389539",
         latitude = "6.1708",
         longitude = "-75.4276",
         altitude = "39000.0",
@@ -26,6 +27,7 @@ vatsimbriefHelperStub.testVatsimClients = {
     {
         type = "Plane",
         callSign = "DLH53N",
+        vatsimClientId = "3252352323",
         latitude = "8.0",
         longitude = "-76.0",
         altitude = "24000.0",
@@ -36,6 +38,7 @@ vatsimbriefHelperStub.testVatsimClients = {
     {
         type = "Plane",
         callSign = "DLH62X",
+        vatsimClientId = "215476763534",
         latitude = "7.0",
         longitude = "-76.0",
         altitude = "13000.0",
@@ -46,6 +49,7 @@ vatsimbriefHelperStub.testVatsimClients = {
     {
         type = "Plane",
         callSign = "DLH57D",
+        vatsimClientId = "884848237",
         latitude = "10.0",
         longitude = "-73.0",
         altitude = "23000.0",
@@ -56,12 +60,15 @@ vatsimbriefHelperStub.testVatsimClients = {
     {
         type = "Station",
         id = "SKRG_APP",
+        vatsimClientId = "341212145",
         latitude = "5.0",
         longitude = "-75.0",
         frequency = "118.000",
         currentDistance = 40.0
     }
 }
+
+vatsimbriefHelperStub.testVatsimClients = defaultTestVatsimClients
 
 local hiddenInterface = {
     getInterfaceVersion = function()
@@ -92,6 +99,14 @@ end
 
 function vatsimbriefHelperStub:emitVatsimDataRefreshEvent()
     VatsimbriefHelperEventBus.emit(VatsimbriefHelperEventOnVatsimDataRefreshed)
+end
+
+function vatsimbriefHelperStub:overrideTestVatsimClients(newClients)
+    self.testVatsimClients = newClients
+end
+
+function vatsimbriefHelperStub:reset()
+    self.testVatsimClients = self.defaultTestVatsimClients
 end
 
 return vatsimbriefHelperStub
