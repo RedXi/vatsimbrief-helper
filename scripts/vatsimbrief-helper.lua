@@ -109,6 +109,9 @@ local function wrapStringAtMaxlengthWithPadding(str, maxLength, padding)
   return result
 end
 
+-- Some UI libraries
+InlineButtonBlob = require("shared_components.inline_button_blob")
+
 -- Color schema
 local colorA320Blue = 0xFFFFDDAA
 local colorNormal = 0xFFFFFFFF
@@ -799,14 +802,26 @@ function processFlightPlanFileDownloadSuccess(httpRequest)
     FlightPlanDownload.MapTypeToDownloadedFileName[typeName] = targetFilePath -- Mark type as downloaded (the file name is the "proof of download" :-)
     FlightPlanDownload.SetOfDownloadingTypes[typeName] = false -- Mark download process as finished
 
-    logMsg(
-      ("Download of file of type '%s' to '%s' for flight plan '%s' succeeded after '%.03fs'"):format(
-        typeName,
-        targetFilePath,
-        httpRequest.userData.flightPlanId,
-        os.clock() - FlightPlanDownload.MapTypeToAttemptTimestamp[typeName]
+    -- It seems there's a race condition when this method is called after the flightplan reloaded.
+    -- Fix that!
+    if FlightPlanDownload.MapTypeToAttemptTimestamp[typeName] ~= nil then
+      logMsg(
+        ("Download of file of type '%s' to '%s' for flight plan '%s' succeeded after '%.03fs'"):format(
+          typeName,
+          targetFilePath,
+          httpRequest.userData.flightPlanId,
+          os.clock() - FlightPlanDownload.MapTypeToAttemptTimestamp[typeName]
+        )
       )
-    )
+    else
+      logMsg(
+        ("Download of file of type '%s' to '%s' for flight plan '%s' succeeded"):format(
+          typeName,
+          targetFilePath,
+          httpRequest.userData.flightPlanId
+        )
+      )
+    end
   end
 end
 
@@ -1340,7 +1355,17 @@ local function processSuccessfulVatsimDataRequest(httpRequest)
 end
 
 local function processFailedVatsimDataRequest(httpRequest)
-  VatsimData.container:processFailedHttpRequest(httpRequest)
+  local fetchStatus = nil
+  if httpRequest.errorCode == HttpDownloadErrors.INTERNAL_SERVER_ERROR then
+    fetchStatus = VatsimDataContainer.FetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
+  elseif httpRequest.errorCode == HttpDownloadErrors.UNHANDLED_RESPONSE then
+    fetchStatus = VatsimDataContainer.FetchStatus.UNEXPECTED_HTTP_RESPONSE
+  elseif httpRequest.errorCode == HttpDownloadErrors.NETWORK then
+    fetchStatus = VatsimDataContainer.FetchStatus.NETWORK_ERROR
+  else
+    fetchStatus = VatsimDataContainer.FetchStatus.UNKNOWN_DOWNLOAD_ERROR
+  end
+  VatsimData.container:processFailedHttpRequest(fetchStatus)
 end
 
 TRACK_ISSUE(
@@ -1355,8 +1380,8 @@ local function refreshVatsimDataNow()
   if getConfiguredAtcWindowVisibilityDefaultTrue() then -- ATM, don't refresh when ATC window is not opened
     copas.addthread(
       function()
-        VatsimDataContainer.CurrentFetchStatus = VatsimDataContainer.FetchStatus.DOWNLOADING
-        local url = "http://data.vatsim.net/vatsim-data.txt"
+        VatsimData.container:noteDownloadIsStarting()
+        local url = "http://data.vatsim.net/vatsim-data.txt-"
         performDefaultHttpGetRequest(url, processSuccessfulVatsimDataRequest, processFailedVatsimDataRequest)
       end
     )
@@ -1458,11 +1483,8 @@ do_often("LazyInitialization:tryVatsimbriefHelperInit()")
 -- Flightplan UI handling
 --
 
-local FlightplanWindowLastRenderedFlightplanId = nil
 local FlightplanWindowLastAtcIdentifiersUpdatedTimestamp = nil
 local FlightplanWindowHasRenderedContent = false
-
-local FlightplanWindowShowDownloadingMsg = false
 
 local FlightplanWindowAirports = ""
 local FlightplanWindowRoute = ""
@@ -1479,7 +1501,11 @@ local FlightplanWindow = {
   KeyWidth = 11, -- If changing this, also change max value length
   MaxValueLengthUntilBreak = 79, -- 90 characters minus keyWidth of 11
   FlightplanWindowValuePaddingLeft = "",
-  FontScale = getConfiguredFlightPlanFontScaleSettingDefault1() -- Cache font scale as it's needed during each draw.
+  FontScale = getConfiguredFlightPlanFontScaleSettingDefault1(), -- Cache font scale as it's needed during each draw.
+  SpacingBetweenAirportsAndReloadButton = "",
+  ReloadButton = nil,
+  FlightplanWindowShowDownloadingMsg = false,
+  FlightplanWindowLastRenderedFlightplanId = nil
 }
 FlightplanWindow.FlightplanWindowValuePaddingLeft = string.rep(" ", FlightplanWindow.KeyWidth)
 
@@ -1514,7 +1540,7 @@ end
 
 function buildVatsimbriefHelperFlightplanWindowCanvas()
   -- Invent a caching mechanism to prevent rendering the strings each frame
-  local flightplanChanged = FlightplanWindowLastRenderedFlightplanId ~= FlightplanId
+  local flightplanChanged = FlightplanWindow.FlightplanWindowLastRenderedFlightplanId ~= FlightplanId
   local flightplanFetchStatusChanged =
     AtcWindowLastRenderedSimbriefFlightplanFetchStatus ~= CurrentSimbriefFlightplanFetchStatus
   local renderContent = flightplanChanged or flightplanFetchStatusChanged or not FlightplanWindowHasRenderedContent
@@ -1534,12 +1560,12 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
 
     if Globals.stringIsEmpty(FlightplanId) then
       if CurrentSimbriefFlightplanFetchStatus == SimbriefFlightplanFetchStatus.DOWNLOADING then
-        FlightplanWindowShowDownloadingMsg = true
+        FlightplanWindow.FlightplanWindowShowDownloadingMsg = true
       else
-        FlightplanWindowShowDownloadingMsg = false -- Clear message if there's another message going on, e.g. a download error
+        FlightplanWindow.FlightplanWindowShowDownloadingMsg = false -- Clear message if there's another message going on, e.g. a download error
       end
     else
-      FlightplanWindowShowDownloadingMsg = false
+      FlightplanWindow.FlightplanWindowShowDownloadingMsg = false
 
       if Globals.stringIsNotEmpty(FlightplanAltIcao) then
         FlightplanWindowAirports = ("%s - %s / %s"):format(FlightplanOriginIcao, FlightplanDestIcao, FlightplanAltIcao)
@@ -1547,6 +1573,22 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
         FlightplanWindowAirports = ("%s - %s"):format(FlightplanOriginIcao, FlightplanDestIcao)
       end
       FlightplanWindowAirports = createFlightplanTableEntry("Airports", FlightplanWindowAirports)
+
+      local windowWidthCharacters = FlightplanWindow.KeyWidth + FlightplanWindow.MaxValueLengthUntilBreak
+      local reloadButtonText = "Reload"
+      local spacing = windowWidthCharacters - string.len(FlightplanWindowAirports) - string.len(reloadButtonText)
+      if spacing < 1 then -- Overflow intentionally
+        spacing = 1 -- Retain some spacing
+      end
+      FlightplanWindow.SpacingBetweenAirportsAndReloadButton = string.rep(" ", spacing)
+      FlightplanWindow.ReloadButton = InlineButtonBlob:new()
+      FlightplanWindow.ReloadButton:addDefaultButton(reloadButtonText)
+      FlightplanWindow.ReloadButton:setDefaultButtonCallbackFunction(
+        function()
+          clearFlightplan()
+          refreshFlightplanNow()
+        end
+      )
 
       FlightplanWindowRoute =
         ("%s/%s %s %s/%s"):format(
@@ -1669,7 +1711,7 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
     end
 
     FlightplanWindowLastRenderedSimbriefFlightplanFetchStatus = CurrentSimbriefFlightplanFetchStatus
-    FlightplanWindowLastRenderedFlightplanId = FlightplanId
+    FlightplanWindow.FlightplanWindowLastRenderedFlightplanId = FlightplanId
     FlightplanWindowHasRenderedContent = true
   end
 
@@ -1682,12 +1724,16 @@ function buildVatsimbriefHelperFlightplanWindowCanvas()
     imgui.PopStyleColor()
   end
 
-  if FlightplanWindowShowDownloadingMsg then
+  if FlightplanWindow.FlightplanWindowShowDownloadingMsg then
     imgui.PushStyleColor(imgui.constant.Col.Text, colorA320Blue)
     imgui.TextUnformatted("Downloading flight plan ...")
     imgui.PopStyleColor()
   elseif Globals.stringIsNotEmpty(FlightplanId) then
     imgui.TextUnformatted(FlightplanWindowAirports)
+    imgui.SameLine()
+    imgui.TextUnformatted(FlightplanWindow.SpacingBetweenAirportsAndReloadButton)
+    imgui.SameLine()
+    FlightplanWindow.ReloadButton:renderToCanvas()
     imgui.TextUnformatted(FlightplanWindowRoute)
     if Globals.stringIsNotEmpty(FlightplanWindowAltRoute) then
       imgui.TextUnformatted(FlightplanWindowAltRoute)
@@ -1718,7 +1764,7 @@ function createVatsimbriefHelperFlightplanWindow()
     saveConfiguration()
     refreshFlightplanNow()
     local scaling = getConfiguredFlightPlanFontScaleSettingDefault1()
-    FlightplanWindow.WindowHandle = float_wnd_create(650 * scaling, 210 * scaling, 1, true)
+    FlightplanWindow.WindowHandle = float_wnd_create(655 * scaling, 210 * scaling, 1, true)
     updateFlightPlanWindowTitle()
     float_wnd_set_imgui_builder(FlightplanWindow.WindowHandle, "buildVatsimbriefHelperFlightplanWindowCanvas")
     float_wnd_set_onclose(FlightplanWindow.WindowHandle, "destroyVatsimbriefHelperFlightplanWindow")
@@ -1754,7 +1800,7 @@ add_macro(
 --
 
 local SelectedAtcFrequenciesChangedTimestamp = nil
-InlineButtonBlob = require("shared_components.inline_button_blob")
+
 AtcStringInlineButtonBlob = require("vatsimbrief-helper.components.atc_inline_button_blob")
 
 function onVHFHelperFrequencyChanged()
@@ -1803,7 +1849,8 @@ local AtcWindow = {
   StationsSelection = nil,
   LastSelectedAtcFrequenciesChangedTimestamp = nil,
   AtcWindowLastRenderedFlightplanId = nil,
-  LastRadioHelperInstalledState = nil
+  LastRadioHelperInstalledState = nil,
+  ReloadButton = nil
 }
 
 local AtcWindowLastAtcIdentifiersUpdatedTimestamp = nil
@@ -1928,7 +1975,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
   local flightplanFetchStatusChanged =
     FlightplanWindowLastRenderedSimbriefFlightplanFetchStatus ~= CurrentSimbriefFlightplanFetchStatus
   local vatsimDataFetchStatusChanged =
-    AtcWindowLastRenderedVatsimDataFetchStatus ~= VatsimDataContainer.CurrentFetchStatus
+    AtcWindowLastRenderedVatsimDataFetchStatus ~= VatsimData.container:getCurrentFetchStatus()
   local selectedAtcFrequenciesChanged =
     LastSelectedAtcFrequenciesChangedTimestamp == nil or
     SelectedAtcFrequenciesChangedTimestamp ~= LastSelectedAtcFrequenciesChangedTimestamp
@@ -1953,10 +2000,23 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     end
 
     -- Render download status of VATSIM data
-    statusType = VatsimData.container.CurrentFetchStatus.level
+    statusType = VatsimData.container:getCurrentFetchStatusLevel()
     if statusType == VatsimDataContainer.FetchStatusLevel.SYSTEM_RELATED then
-      AtcWindowVatsimDataDownloadStatus, AtcWindowVatsimDataDownloadStatusColor =
-        getVatsimDataFetchStatusMessageAndColor()
+      AtcWindowVatsimDataDownloadStatus, level = VatsimData.container:getVatsimDataFetchStatusMessageAndLevel()
+
+      if level == VatsimDataContainer.FetchStatusLevel.INFO then
+        AtcWindowVatsimDataDownloadStatusColor = colorNormal
+      elseif level == VatsimDataContainer.FetchStatusLevel.SYSTEM_RELATED then
+        AtcWindowVatsimDataDownloadStatusColor = colorWarn
+      elseif level == VatsimDataContainer.FetchStatusLevel.USER_RELATED then
+        AtcWindowVatsimDataDownloadStatusColor = colorA320Blue
+      else
+        AtcWindowVatsimDataDownloadStatusColor = colorNormal
+      end
+
+      AtcWindow.ReloadButton = InlineButtonBlob:new()
+      AtcWindow.ReloadButton:addDefaultButton("Retry")
+      AtcWindow.ReloadButton:setDefaultButtonCallbackFunction(refreshVatsimDataNow)
     else
       AtcWindowVatsimDataDownloadStatus = ""
       AtcWindowVatsimDataDownloadStatusColor = colorNormal
@@ -2000,9 +2060,9 @@ function buildVatsimbriefHelperAtcWindowCanvas()
 
       -- Only show "downloading" message when there is no VATSIM data yet and no other download status is rendered
       showVatsimDataIsDownloading =
-        VatsimDataContainer.CurrentFetchStatus == VatsimDataContainer.FetchStatus.DOWNLOADING
+        VatsimData.container:getCurrentFetchStatus() == VatsimDataContainer.FetchStatus.DOWNLOADING
       showVatsimDataIsDisabled =
-        VatsimDataContainer.CurrentFetchStatus == VatsimDataContainer.FetchStatus.NO_DOWNLOAD_ATTEMPTED and
+        VatsimData.container:getCurrentFetchStatus() == VatsimDataContainer.FetchStatus.NO_DOWNLOAD_ATTEMPTED and
         getConfiguredAutoRefreshAtcSettingDefaultTrue() ~= true
     else
       showVatsimDataIsDownloading = false
@@ -2015,7 +2075,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
         AtcWindow.StationsSelection = nil
       else
         if #VatsimData.container.MapAtcIdentifiersToAtcInfo == 0 then
-          AtcWindow.StationsStatus = "No ATCs found. This will probably be a technical problem."
+          AtcWindow.StationsStatus = "No ATCs found. This will probably be a technical issue."
           AtcWindow.Stations = nil
           AtcWindow.AtcsString = ""
           AtcWindow.StationsSelection = nil
@@ -2057,7 +2117,7 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     updateAtcWindowTitle()
 
     AtcWindowLastRenderedSimbriefFlightplanFetchStatus = CurrentSimbriefFlightplanFetchStatus
-    AtcWindowLastRenderedVatsimDataFetchStatus = VatsimDataContainer.CurrentFetchStatus
+    AtcWindowLastRenderedVatsimDataFetchStatus = VatsimData.container:getCurrentFetchStatus()
     AtcWindow.AtcWindowLastRenderedFlightplanId = FlightplanId
     AtcWindowLastAtcIdentifiersUpdatedTimestamp = VatsimData.container.AtcIdentifiersUpdatedTimestamp
     LastSelectedAtcFrequenciesChangedTimestamp = SelectedAtcFrequenciesChangedTimestamp
@@ -2080,6 +2140,10 @@ function buildVatsimbriefHelperAtcWindowCanvas()
     imgui.PushStyleColor(imgui.constant.Col.Text, AtcWindowVatsimDataDownloadStatusColor)
     imgui.TextUnformatted(AtcWindowVatsimDataDownloadStatus)
     imgui.PopStyleColor()
+    imgui.SameLine()
+    imgui.TextUnformatted(" - ")
+    imgui.SameLine()
+    AtcWindow.ReloadButton:renderToCanvas()
   end
   if Globals.stringIsNotEmpty(Route) then
     imgui.PushStyleColor(imgui.constant.Col.Text, colorA320Blue)

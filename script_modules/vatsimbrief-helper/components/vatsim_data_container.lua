@@ -16,13 +16,25 @@ do
   }
 
   VatsimDataContainer.FetchStatus = {
-    NO_DOWNLOAD_ATTEMPTED = {level = VatsimDataContainer.FetchStatusLevel.INFO},
-    DOWNLOADING = {level = VatsimDataContainer.FetchStatusLevel.INFO},
-    NO_ERROR = {level = VatsimDataContainer.FetchStatusLevel.INFO},
-    UNKNOWN_DOWNLOAD_ERROR = {level = VatsimDataContainer.FetchStatusLevel.SYSTEM_RELATED},
-    UNEXPECTED_HTTP_RESPONSE_STATUS = {level = VatsimDataContainer.FetchStatusLevel.SYSTEM_RELATED},
-    UNEXPECTED_HTTP_RESPONSE = {level = VatsimDataContainer.FetchStatusLevel.SYSTEM_RELATED},
-    NETWORK_ERROR = {level = VatsimDataContainer.FetchStatusLevel.SYSTEM_RELATED}
+    NO_DOWNLOAD_ATTEMPTED = {
+      level = VatsimDataContainer.FetchStatusLevel.INFO,
+      nameForDebugging = "NO_DOWNLOAD_ATTEMPTED"
+    },
+    DOWNLOADING = {level = VatsimDataContainer.FetchStatusLevel.INFO, nameForDebugging = "DOWNLOADING"},
+    NO_ERROR = {level = VatsimDataContainer.FetchStatusLevel.INFO, nameForDebugging = "NO_ERROR"},
+    UNKNOWN_DOWNLOAD_ERROR = {
+      level = VatsimDataContainer.FetchStatusLevel.SYSTEM_RELATED,
+      nameForDebugging = "UNKNOWN_DOWNLOAD_ERROR"
+    },
+    UNEXPECTED_HTTP_RESPONSE_STATUS = {
+      level = VatsimDataContainer.FetchStatusLevel.SYSTEM_RELATED,
+      nameForDebugging = "UNEXPECTED_HTTP_RESPONSE_STATUS"
+    },
+    UNEXPECTED_HTTP_RESPONSE = {
+      level = VatsimDataContainer.FetchStatusLevel.SYSTEM_RELATED,
+      nameForDebugging = "UNEXPECTED_HTTP_RESPONSE"
+    },
+    NETWORK_ERROR = {level = VatsimDataContainer.FetchStatusLevel.SYSTEM_RELATED, nameForDebugging = "NETWORK_ERROR"}
   }
 
   function VatsimDataContainer:getUpdateTimestamp()
@@ -259,7 +271,7 @@ do
     table.sort(self.AllVatsimClients, VatsimDataContainer._distanceCompareFunction)
   end
 
-  function VatsimDataContainer:getVatsimDataFetchStatusMessageAndColor()
+  function VatsimDataContainer:getVatsimDataFetchStatusMessageAndLevel()
     local msg
     if self.CurrentFetchStatus == VatsimDataContainer.FetchStatus.NO_DOWNLOAD_ATTEMPTED then
       msg = "Download pending"
@@ -278,32 +290,25 @@ do
     else
       msg = "Unknown error '" .. (self.CurrentFetchStatus or "(none)") .. "'"
     end
-    msg = "Could not download VATSIM data:\n" .. msg .. "."
+    msg = "Could not download VATSIM data: " .. msg .. "."
 
-    local color
-    if self.CurrentFetchStatus.level == self.FetchStatusLevel.INFO then
-      color = colorNormal
-    elseif self.CurrentFetchStatus.level == self.FetchStatusLevel.SYSTEM_RELATED then
-      color = colorWarn
-    elseif self.CurrentFetchStatus.level == self.FetchStatusLevel.USER_RELATED then
-      color = colorA320Blue
-    else
-      color = colorNormal
-    end
-
-    return msg, color
+    return msg, self.CurrentFetchStatus.level
   end
 
-  function VatsimDataContainer:processFailedHttpRequest(httpRequest)
-    if httpRequest.errorCode == HttpDownloadErrors.INTERNAL_SERVER_ERROR then
-      self.CurrentFetchStatus = VatsimDataContainer.FetchStatus.UNEXPECTED_HTTP_RESPONSE_STATUS
-    elseif httpRequest.errorCode == HttpDownloadErrors.UNHANDLED_RESPONSE then
-      self.CurrentFetchStatus = VatsimDataContainer.FetchStatus.UNEXPECTED_HTTP_RESPONSE
-    elseif httpRequest.errorCode == HttpDownloadErrors.NETWORK then
-      self.CurrentFetchStatus = VatsimDataContainer.FetchStatus.NETWORK_ERROR
-    else
-      self.CurrentFetchStatus = VatsimDataContainer.FetchStatus.UNKNOWN_DOWNLOAD_ERROR
-    end
+  function VatsimDataContainer:processFailedHttpRequest(fetchStatus)
+    self.CurrentFetchStatus = fetchStatus
+  end
+
+  function VatsimDataContainer:getCurrentFetchStatus()
+    return self.CurrentFetchStatus
+  end
+
+  function VatsimDataContainer:getCurrentFetchStatusLevel()
+    return self.CurrentFetchStatus.level
+  end
+
+  function VatsimDataContainer:noteDownloadIsStarting()
+    self.CurrentFetchStatus = VatsimDataContainer.FetchStatus.DOWNLOADING
   end
 end
 return VatsimDataContainer
