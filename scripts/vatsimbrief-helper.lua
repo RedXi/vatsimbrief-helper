@@ -1004,6 +1004,9 @@ do_sometimes("downloadAllFlightplans()")
 -- Simbrief flight plans
 --
 
+TRACK_ISSUE("Tech Debt", "FlightplanCallsign")
+local FlightPlanStateContainer = require("vatsimbrief-helper.state.flight_plan")
+
 local function removeLinebreaksFromString(s)
   return string.gsub(s, "\n", " ")
 end
@@ -1180,6 +1183,7 @@ local function processNewFlightplan(httpRequest)
         FlightplanAltRunway = SimbriefFlightplan.alternate.plan_rwy
 
         FlightplanCallsign = SimbriefFlightplan.atc.callsign
+        FlightPlanStateContainer.setCallSign(FlightplanCallsign)
 
         FlightplanRoute = SimbriefFlightplan.general.route
         if Globals.stringIsEmpty(FlightplanRoute) then

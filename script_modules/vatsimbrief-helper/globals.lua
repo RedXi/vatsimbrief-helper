@@ -70,6 +70,20 @@ TRACK_ISSUE(
     )
 )
 
+Globals.splitStringBySeparatorNew = function(str, separatorCharacter)
+    if str:sub(-1) ~= separatorCharacter then
+        str = str .. separatorCharacter
+    end
+
+    local splits = str:gmatch("(.-)" .. separatorCharacter)
+    local splitTable = {}
+    for split in splits do
+        table.insert(splitTable, split)
+    end
+
+    return splitTable
+end
+
 Globals.stringIsEmpty = function(s)
     return s == nil or s == Globals.emptyString
 end

@@ -1,16 +1,17 @@
 local VatsimData = require("vatsimbrief-helper.state.vatsim_data")
+local FlightPlanStateContainer = require("vatsimbrief-helper.state.flight_plan")
 
 TRACK_ISSUE(
     "Public Interface",
     MULTILINE_TEXT(
         "Interface users can (and will, because it's Lua) easily break the VatsimDataContainer.",
-        "Copy all retrieved data to avoid issues. This function is usually called on frequency change only."
+        "Copy at least frequency/ATC data to avoid issues. This function is usually called on frequency change only."
     ),
     "Accept the minor delay in external synchronous threads for now."
 )
 VatsimbriefHelperPublicInterface = {
     getInterfaceVersion = function()
-        return 1
+        return 2
     end,
     getAtcStationsForFrequencyClosestFirst = function(fullFrequencyString)
         local atcInfos = VatsimData.container:getAtcStationsForFrequencyClosestFirst(fullFrequencyString)
@@ -27,6 +28,12 @@ VatsimbriefHelperPublicInterface = {
             table.insert(atcInfosCopy, newAtcInfo)
         end
         return atcInfosCopy
+    end,
+    getOwnCallSign = function()
+        return FlightPlanStateContainer.getCallSign()
+    end,
+    getAllVatsimClientsClosestFirstWithTimestamp = function()
+        return VatsimData.container:getAllVatsimClientsClosestFirst(), VatsimData.container:getUpdateTimestamp()
     end
 }
 

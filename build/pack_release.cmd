@@ -24,16 +24,16 @@ mkdir %RELEASE_PACKAGE_FOLDER_PATH%
 mkdir %RELEASE_PACKAGE_FOLDER_PATH%\Modules
 mkdir %RELEASE_PACKAGE_FOLDER_PATH%\Scripts
 
-xcopy /Y /S /E scripts\* %RELEASE_PACKAGE_FOLDER_PATH%\Scripts\*
-xcopy /Y /S /E script_modules\* %RELEASE_PACKAGE_FOLDER_PATH%\Modules\*
-xcopy /Y /S /E modules\* %RELEASE_PACKAGE_FOLDER_PATH%\Modules\*
-
 if not exist script_modules\%RELEASE_FILE_NAME_PREFIX% (
     mkdir script_modules\%RELEASE_FILE_NAME_PREFIX%
 )
 
 echo %TAG%> script_modules\%RELEASE_FILE_NAME_PREFIX%\release_tag.txt
 echo %COMMIT_HASH%> script_modules\%RELEASE_FILE_NAME_PREFIX%\release_commit_hash.txt
+
+xcopy /Y /S /E scripts\* %RELEASE_PACKAGE_FOLDER_PATH%\Scripts\*
+xcopy /Y /S /E script_modules\* %RELEASE_PACKAGE_FOLDER_PATH%\Modules\*
+xcopy /Y /S /E modules\* %RELEASE_PACKAGE_FOLDER_PATH%\Modules\*
 
 %NSIS_EXECUTABLE% "/XOutFile ..\%RELEASE_PACKAGE_FOLDER_PATH%\%RELEASE_FILE_NAME_PREFIX%-%TAG%-%COMMIT_HASH%.exe" .\build\generate-installer.nsi
 if %ERRORLEVEL% NEQ 0 (
