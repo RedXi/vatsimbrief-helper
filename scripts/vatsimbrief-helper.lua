@@ -1381,7 +1381,7 @@ local function refreshVatsimDataNow()
     copas.addthread(
       function()
         VatsimData.container:noteDownloadIsStarting()
-        local url = "http://data.vatsim.net/vatsim-data.txt-"
+        local url = "http://data.vatsim.net/vatsim-data.txt"
         performDefaultHttpGetRequest(url, processSuccessfulVatsimDataRequest, processFailedVatsimDataRequest)
       end
     )
