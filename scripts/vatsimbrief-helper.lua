@@ -44,6 +44,9 @@ end
 local function stringIsBlank(s)
   return s == nil or s == Globals.emptyString or trim(s) == ""
 end
+local function stringIsNotBlank(s)
+  return not stringIsBlank(s)
+end
 local function stringEndsWith(s, e)
   return Globals.stringIsEmpty(e) or s:sub(-(#e)) == e
 end
@@ -1179,8 +1182,17 @@ local function processNewFlightplan(httpRequest)
       if newFlightplanId ~= FlightplanId then -- Flightplan changed
         FlightplanId = newFlightplanId
 
-        FlightPlan.FlightNumber = SimbriefFlightplan.general.flight_number
-        FlightPlan.AirlineIcao = SimbriefFlightplan.general.icao_airline
+        -- If a value is not set, <key/> is interpreted as empty node and neither as empty string or nil.
+        if type(SimbriefFlightplan.general.flight_number) == "string" then
+          FlightPlan.FlightNumber = SimbriefFlightplan.general.flight_number
+        else
+          FlightPlan.FlightNumber = ""
+        end
+        if type(SimbriefFlightplan.general.icao_airline) == "string" then
+          FlightPlan.AirlineIcao = SimbriefFlightplan.general.icao_airline
+        else
+          FlightPlan.AirlineIcao = ""
+        end
 
         FlightplanOriginIcao = SimbriefFlightplan.origin.icao_code
         FlightplanOriginIata = SimbriefFlightplan.origin.iata_code
@@ -1518,9 +1530,10 @@ local function updateFlightPlanWindowTitle()
     -- Title also exists without the physical window, but for performance, only render if window exists
     local title = "Vatsimbrief Helper Flight Plan"
     if Globals.stringIsNotEmpty(FlightplanId) then
-      title = title .. " for flight " .. FlightPlan.AirlineIcao .. FlightPlan.FlightNumber
+      if stringIsNotBlank(FlightPlan.AirlineIcao) and stringIsNotBlank(FlightPlan.FlightNumber) then
+        title = title .. " for flight " .. FlightPlan.AirlineIcao .. FlightPlan.FlightNumber
+      end
     end
-
     float_wnd_set_title(FlightplanWindow.WindowHandle, title)
   end
 end
