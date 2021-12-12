@@ -4,6 +4,8 @@
 
 The plugin provides information from the **Simbrief flight plan** and/or relevant **VATSIM frequencies** for ATC communications in X-Plane 2D and VR flight setups.
 
+**Note:** Due to a protocol change of VATSIM webservices, FlyWithLua can currently not perform any requests to obtain ATC frequencies.
+
 It solves major issues that VR pilots usually face:
 
 * A printed flight plan can not be taken into VR. And even if the resolution of the VR device allows for, scrolling through tiny Simbrief flight plan fonts is usually very exhausting. Instead, there is a window showing the most important information from the flight plan, just enough to operate and monitor the flight.
